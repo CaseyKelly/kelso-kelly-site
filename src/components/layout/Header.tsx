@@ -1,0 +1,92 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Menu, X, Music } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { siteConfig } from "@/data/site-config";
+
+const navigation = [
+  { name: "Home", href: "/" },
+  { name: "Photos & Videos", href: "/media" },
+  { name: "Schedule", href: "/schedule" },
+  { name: "Bio", href: "/bio" },
+  { name: "Song List", href: "/songs" },
+  { name: "Contact", href: "/contact" },
+];
+
+export function Header() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const pathname = usePathname();
+
+  return (
+    <header className="fixed top-0 left-0 right-0 z-50 bg-zinc-950/90 backdrop-blur-md border-b border-zinc-800">
+      <nav className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 items-center justify-between">
+          <div className="flex items-center">
+            <Link href="/" className="flex items-center gap-2 group">
+              <Music className="h-8 w-8 text-amber-500 group-hover:text-amber-400 transition-colors" />
+              <span className="text-xl font-bold text-white group-hover:text-amber-400 transition-colors">
+                {siteConfig.name}
+              </span>
+            </Link>
+          </div>
+
+          <div className="hidden md:flex md:items-center md:gap-1">
+            {navigation.map((item) => (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={cn(
+                  "px-4 py-2 text-sm font-medium rounded-lg transition-colors",
+                  pathname === item.href
+                    ? "text-amber-500 bg-amber-500/10"
+                    : "text-zinc-300 hover:text-white hover:bg-zinc-800"
+                )}
+              >
+                {item.name}
+              </Link>
+            ))}
+          </div>
+
+          <div className="md:hidden">
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-2 text-zinc-400 hover:text-white transition-colors"
+            >
+              {mobileMenuOpen ? (
+                <X className="h-6 w-6" />
+              ) : (
+                <Menu className="h-6 w-6" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        {mobileMenuOpen && (
+          <div className="md:hidden py-4 border-t border-zinc-800">
+            <div className="flex flex-col gap-1">
+              {navigation.map((item) => (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={cn(
+                    "px-4 py-3 text-base font-medium rounded-lg transition-colors",
+                    pathname === item.href
+                      ? "text-amber-500 bg-amber-500/10"
+                      : "text-zinc-300 hover:text-white hover:bg-zinc-800"
+                  )}
+                >
+                  {item.name}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+      </nav>
+    </header>
+  );
+}

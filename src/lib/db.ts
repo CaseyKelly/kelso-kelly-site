@@ -117,8 +117,31 @@ export async function upsertEvent(event: {
   address?: string | null;
   description?: string | null;
   ticket_url?: string | null;
-}) {
-  return sql`
+}): Promise<{ action: 'created' | 'updated' | 'unchanged'; event: DbEvent }> {
+  // First check if event exists and if data is different
+  const existing = await sql`
+    SELECT * FROM events WHERE google_event_id = ${event.google_event_id}
+  `;
+  
+  const existingEvent = existing[0] as DbEvent | undefined;
+  
+  // If exists, check if any fields changed
+  if (existingEvent) {
+    const hasChanges = 
+      existingEvent.title !== event.title ||
+      existingEvent.date !== event.date ||
+      existingEvent.time !== event.time ||
+      existingEvent.venue !== (event.venue ?? null) ||
+      existingEvent.address !== (event.address ?? null) ||
+      existingEvent.description !== (event.description ?? null) ||
+      existingEvent.ticket_url !== (event.ticket_url ?? null);
+    
+    if (!hasChanges) {
+      return { action: 'unchanged', event: existingEvent };
+    }
+  }
+  
+  const result = await sql`
     INSERT INTO events (
       google_event_id, title, date, time, venue, address, description, ticket_url, updated_at
     ) VALUES (
@@ -144,6 +167,11 @@ export async function upsertEvent(event: {
       updated_at = NOW()
     RETURNING *
   `;
+  
+  return { 
+    action: existingEvent ? 'updated' : 'created',
+    event: result[0] as DbEvent
+  };
 }
 
 export async function deleteEvent(googleEventId: string) {
@@ -162,8 +190,31 @@ export async function upsertPhoto(photo: {
   width?: number | null;
   height?: number | null;
   order_index?: number;
-}) {
-  return sql`
+}): Promise<{ action: 'created' | 'updated' | 'unchanged'; photo: DbPhoto }> {
+  // First check if photo exists and if data is different
+  const existing = await sql`
+    SELECT * FROM photos WHERE google_drive_id = ${photo.google_drive_id}
+  `;
+  
+  const existingPhoto = existing[0] as DbPhoto | undefined;
+  
+  // If exists, check if any fields changed
+  if (existingPhoto) {
+    const hasChanges = 
+      existingPhoto.title !== photo.title ||
+      existingPhoto.category !== photo.category ||
+      existingPhoto.alt_text !== (photo.alt_text ?? null) ||
+      existingPhoto.optimized_url !== photo.optimized_url ||
+      existingPhoto.width !== (photo.width ?? null) ||
+      existingPhoto.height !== (photo.height ?? null) ||
+      existingPhoto.order_index !== (photo.order_index ?? 0);
+    
+    if (!hasChanges) {
+      return { action: 'unchanged', photo: existingPhoto };
+    }
+  }
+  
+  const result = await sql`
     INSERT INTO photos (
       google_drive_id, title, category, alt_text, optimized_url, width, height, order_index, updated_at
     ) VALUES (
@@ -189,6 +240,11 @@ export async function upsertPhoto(photo: {
       updated_at = NOW()
     RETURNING *
   `;
+  
+  return { 
+    action: existingPhoto ? 'updated' : 'created',
+    photo: result[0] as DbPhoto
+  };
 }
 
 export async function deletePhoto(googleDriveId: string) {

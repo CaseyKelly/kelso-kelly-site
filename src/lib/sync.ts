@@ -15,7 +15,8 @@ import {
   deleteAllVideos,
   logSync,
   getEvents,
-  getPhotos
+  getPhotos,
+  getVideos
 } from './db';
 import { put } from '@vercel/blob';
 import { revalidatePath } from 'next/cache';
@@ -43,10 +44,13 @@ export async function syncCalendarEvents(): Promise<SyncResult> {
     const existingEventIds = new Set(existingEvents.map(e => e.google_event_id));
     const calendarEventIds = new Set(calendarEvents.map(e => e.id));
     
-    // Upsert all calendar events
-    let upsertedCount = 0;
+    // Upsert all calendar events and track changes
+    let createdCount = 0;
+    let updatedCount = 0;
+    let unchangedCount = 0;
+    
     for (const event of calendarEvents) {
-      await upsertEvent({
+      const result = await upsertEvent({
         google_event_id: event.id,
         title: event.title,
         date: event.date,
@@ -56,7 +60,16 @@ export async function syncCalendarEvents(): Promise<SyncResult> {
         description: event.description,
         ticket_url: event.ticketUrl,
       });
-      upsertedCount++;
+      
+      if (result.action === 'created') {
+        createdCount++;
+        console.log(`✓ Created event: ${event.title}`);
+      } else if (result.action === 'updated') {
+        updatedCount++;
+        console.log(`✓ Updated event: ${event.title}`);
+      } else {
+        unchangedCount++;
+      }
     }
     
     // Note: We're not auto-deleting events that were removed from calendar
@@ -69,7 +82,8 @@ export async function syncCalendarEvents(): Promise<SyncResult> {
     }
     */
     
-    console.log(`Synced ${upsertedCount} events to database`);
+    const summary = `Created: ${createdCount}, Updated: ${updatedCount}, Unchanged: ${unchangedCount}`;
+    console.log(`Calendar sync complete - ${summary}`);
     
     // Revalidate the schedule page
     revalidatePath('/schedule');
@@ -77,13 +91,18 @@ export async function syncCalendarEvents(): Promise<SyncResult> {
     await logSync({
       sync_type: 'calendar',
       status: 'success',
-      message: `Synced ${upsertedCount} events`,
+      message: summary,
     });
     
     return {
       success: true,
-      message: `Successfully synced ${upsertedCount} events from Google Calendar`,
-      details: { count: upsertedCount },
+      message: `Successfully synced ${calendarEvents.length} events from Google Calendar`,
+      details: { 
+        total: calendarEvents.length,
+        created: createdCount,
+        updated: updatedCount,
+        unchanged: unchangedCount,
+      },
     };
   } catch (error) {
     console.error('Error syncing calendar events:', error);
@@ -117,7 +136,10 @@ export async function syncPhotos(): Promise<SyncResult> {
     const parentFolderId = process.env.GOOGLE_DRIVE_PHOTOS_FOLDER_ID;
     const categories = ['performance', 'backstage', 'press', 'promo'] as const;
     
-    let totalProcessed = 0;
+    let createdCount = 0;
+    let updatedCount = 0;
+    let skippedCount = 0;
+    let errorCount = 0;
     
     for (const category of categories) {
       console.log(`Processing ${category} photos...`);
@@ -135,21 +157,45 @@ export async function syncPhotos(): Promise<SyncResult> {
       
       console.log(`Found ${files.length} images in ${category} folder`);
       
-      // Get existing photos for this category to check what's new
+      // Get existing photos for this category 
       const existingPhotos = await getPhotos(category);
       const existingPhotoIds = new Set(existingPhotos.map(p => p.google_drive_id));
       
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         
-        // Skip if already processed (unless we want to re-process)
-        if (existingPhotoIds.has(file.id)) {
-          console.log(`Skipping ${file.name} (already processed)`);
-          continue;
-        }
-        
         try {
-          console.log(`Processing ${file.name}...`);
+          // Check if photo already exists
+          const photoExists = existingPhotoIds.has(file.id);
+          
+          if (photoExists) {
+            // Photo exists - only update metadata (skip expensive download/optimize)
+            const existingPhoto = existingPhotos.find(p => p.google_drive_id === file.id)!;
+            const title = cleanFilenameForTitle(file.name);
+            const altText = `${title} - ${category}`;
+            
+            const result = await upsertPhoto({
+              google_drive_id: file.id,
+              title,
+              category,
+              alt_text: altText,
+              optimized_url: existingPhoto.optimized_url, // Keep existing
+              width: existingPhoto.width, // Keep existing
+              height: existingPhoto.height, // Keep existing
+              order_index: i,
+            });
+            
+            if (result.action === 'updated') {
+              updatedCount++;
+              console.log(`✓ Updated metadata: ${file.name}`);
+            } else {
+              skippedCount++;
+            }
+            continue;
+          }
+          
+          // New photo - download, optimize, and upload
+          console.log(`Processing new photo: ${file.name}...`);
           
           // Download the image
           const imageBuffer = await downloadFile(file.id);
@@ -173,7 +219,7 @@ export async function syncPhotos(): Promise<SyncResult> {
           const altText = `${title} - ${category}`;
           
           // Save to database
-          await upsertPhoto({
+          const result = await upsertPhoto({
             google_drive_id: file.id,
             title,
             category,
@@ -184,30 +230,42 @@ export async function syncPhotos(): Promise<SyncResult> {
             order_index: i,
           });
           
-          totalProcessed++;
-          console.log(`Processed ${file.name} -> ${blob.url}`);
+          if (result.action === 'created') {
+            createdCount++;
+            console.log(`✓ Created photo: ${file.name}`);
+          } else if (result.action === 'updated') {
+            updatedCount++;
+            console.log(`✓ Updated photo: ${file.name}`);
+          }
         } catch (error) {
-          console.error(`Error processing ${file.name}:`, error);
+          errorCount++;
+          console.error(`✗ Error processing ${file.name}:`, error);
           // Continue with next file
         }
       }
     }
     
-    console.log(`Synced ${totalProcessed} new photos to database`);
+    const summary = `Created: ${createdCount}, Updated: ${updatedCount}, Skipped: ${skippedCount}, Errors: ${errorCount}`;
+    console.log(`Photo sync complete - ${summary}`);
     
     // Revalidate the media page
     revalidatePath('/media');
     
     await logSync({
       sync_type: 'photos',
-      status: 'success',
-      message: `Synced ${totalProcessed} photos`,
+      status: errorCount > 0 ? 'error' : 'success',
+      message: summary,
     });
     
     return {
-      success: true,
-      message: `Successfully synced ${totalProcessed} photos from Google Drive`,
-      details: { count: totalProcessed },
+      success: errorCount === 0,
+      message: `Photo sync complete - ${summary}`,
+      details: { 
+        created: createdCount,
+        updated: updatedCount,
+        skipped: skippedCount,
+        errors: errorCount,
+      },
     };
   } catch (error) {
     console.error('Error syncing photos:', error);
@@ -243,11 +301,16 @@ export async function syncVideos(): Promise<SyncResult> {
     
     console.log(`Found ${sheetVideos.length} videos in Google Sheet`);
     
+    // Get existing videos for comparison
+    const existingVideos = await getVideos();
+    
     // Delete all existing videos and re-insert
     // This is simpler than trying to diff and update
+    console.log(`Deleting ${existingVideos.length} existing videos...`);
     await deleteAllVideos();
     
     // Insert all videos
+    console.log(`Inserting ${sheetVideos.length} videos from sheet...`);
     for (const video of sheetVideos) {
       await upsertVideo({
         title: video.title,
@@ -259,7 +322,8 @@ export async function syncVideos(): Promise<SyncResult> {
       });
     }
     
-    console.log(`Synced ${sheetVideos.length} videos to database`);
+    const summary = `Replaced ${existingVideos.length} videos with ${sheetVideos.length} from sheet`;
+    console.log(`Video sync complete - ${summary}`);
     
     // Revalidate the media page
     revalidatePath('/media');
@@ -267,13 +331,16 @@ export async function syncVideos(): Promise<SyncResult> {
     await logSync({
       sync_type: 'videos',
       status: 'success',
-      message: `Synced ${sheetVideos.length} videos`,
+      message: summary,
     });
     
     return {
       success: true,
       message: `Successfully synced ${sheetVideos.length} videos from Google Sheet`,
-      details: { count: sheetVideos.length },
+      details: { 
+        previous: existingVideos.length,
+        current: sheetVideos.length,
+      },
     };
   } catch (error) {
     console.error('Error syncing videos:', error);

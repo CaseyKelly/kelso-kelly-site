@@ -117,8 +117,10 @@ export async function upsertEvent(event: {
   address?: string | null;
   description?: string | null;
   ticket_url?: string | null;
-}) {
-  return sql`
+}): Promise<{ action: 'created' | 'updated' | 'unchanged'; event: DbEvent }> {
+  // Use ON CONFLICT with WHERE clause to skip update if data hasn't changed
+  // This prevents unnecessary writes and updated_at changes
+  const result = await sql`
     INSERT INTO events (
       google_event_id, title, date, time, venue, address, description, ticket_url, updated_at
     ) VALUES (
@@ -142,8 +144,31 @@ export async function upsertEvent(event: {
       description = EXCLUDED.description,
       ticket_url = EXCLUDED.ticket_url,
       updated_at = NOW()
-    RETURNING *
+    WHERE 
+      events.title IS DISTINCT FROM EXCLUDED.title OR
+      events.date IS DISTINCT FROM EXCLUDED.date OR
+      events.time IS DISTINCT FROM EXCLUDED.time OR
+      events.venue IS DISTINCT FROM EXCLUDED.venue OR
+      events.address IS DISTINCT FROM EXCLUDED.address OR
+      events.description IS DISTINCT FROM EXCLUDED.description OR
+      events.ticket_url IS DISTINCT FROM EXCLUDED.ticket_url
+    RETURNING *, (xmax = 0) AS inserted
   `;
+  
+  if (result.length === 0) {
+    // No row returned means WHERE clause prevented update (unchanged)
+    const existing = await sql`SELECT *, true AS inserted FROM events WHERE google_event_id = ${event.google_event_id}`;
+    return { action: 'unchanged', event: existing[0] as DbEvent };
+  }
+  
+  const row = result[0] as DbEvent & { inserted: boolean };
+  
+  // inserted = true means it was an INSERT
+  // inserted = false and row returned means it was an UPDATE
+  return { 
+    action: row.inserted ? 'created' : 'updated',
+    event: row
+  };
 }
 
 export async function deleteEvent(googleEventId: string) {
@@ -162,8 +187,9 @@ export async function upsertPhoto(photo: {
   width?: number | null;
   height?: number | null;
   order_index?: number;
-}) {
-  return sql`
+}): Promise<{ action: 'created' | 'updated' | 'unchanged'; photo: DbPhoto }> {
+  // Use ON CONFLICT with WHERE clause to skip update if data hasn't changed
+  const result = await sql`
     INSERT INTO photos (
       google_drive_id, title, category, alt_text, optimized_url, width, height, order_index, updated_at
     ) VALUES (
@@ -187,8 +213,29 @@ export async function upsertPhoto(photo: {
       height = EXCLUDED.height,
       order_index = EXCLUDED.order_index,
       updated_at = NOW()
-    RETURNING *
+    WHERE 
+      photos.title IS DISTINCT FROM EXCLUDED.title OR
+      photos.category IS DISTINCT FROM EXCLUDED.category OR
+      photos.alt_text IS DISTINCT FROM EXCLUDED.alt_text OR
+      photos.optimized_url IS DISTINCT FROM EXCLUDED.optimized_url OR
+      photos.width IS DISTINCT FROM EXCLUDED.width OR
+      photos.height IS DISTINCT FROM EXCLUDED.height OR
+      photos.order_index IS DISTINCT FROM EXCLUDED.order_index
+    RETURNING *, (xmax = 0) AS inserted
   `;
+  
+  if (result.length === 0) {
+    // No row returned means WHERE clause prevented update (unchanged)
+    const existing = await sql`SELECT *, true AS inserted FROM photos WHERE google_drive_id = ${photo.google_drive_id}`;
+    return { action: 'unchanged', photo: existing[0] as DbPhoto };
+  }
+  
+  const row = result[0] as DbPhoto & { inserted: boolean };
+  
+  return { 
+    action: row.inserted ? 'created' : 'updated',
+    photo: row
+  };
 }
 
 export async function deletePhoto(googleDriveId: string) {

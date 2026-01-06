@@ -77,6 +77,8 @@ function parseDescription(description?: string | null): { description?: string; 
 
 /**
  * Format time from Google Calendar event
+ * Google Calendar API returns datetime in the event's timezone (e.g., "2024-01-15T19:00:00-08:00")
+ * We need to parse this and display it in the original timezone, not convert to UTC
  */
 function formatTime(dateTime?: string | null, date?: string | null): string {
   if (!dateTime && !date) return 'TBD';
@@ -84,10 +86,16 @@ function formatTime(dateTime?: string | null, date?: string | null): string {
   // If it's an all-day event, return generic time
   if (date && !dateTime) return 'All Day';
   
-  // Parse the datetime and format as 12-hour time
-  const dt = new Date(dateTime!);
-  const hours = dt.getHours();
-  const minutes = dt.getMinutes();
+  // Extract the time portion from the ISO string
+  // Example: "2024-01-15T19:00:00-08:00" -> "19:00:00"
+  const timePart = dateTime!.split('T')[1];
+  if (!timePart) return 'TBD';
+  
+  // Parse hours and minutes from the time string (before timezone offset)
+  const [hoursStr, minutesStr] = timePart.split(':');
+  const hours = parseInt(hoursStr, 10);
+  const minutes = parseInt(minutesStr, 10);
+  
   const ampm = hours >= 12 ? 'PM' : 'AM';
   const displayHours = hours % 12 || 12;
   const displayMinutes = minutes > 0 ? `:${minutes.toString().padStart(2, '0')}` : '';

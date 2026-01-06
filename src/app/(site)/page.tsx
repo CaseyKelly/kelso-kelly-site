@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Calendar, Music2, Mail, MapPin, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -158,8 +159,15 @@ export default async function HomePage() {
             </div>
             
             <div className="relative">
-              <div className="aspect-square rounded-2xl bg-gradient-to-br from-amber-500/20 to-zinc-800 flex items-center justify-center">
-                <Music2 className="h-32 w-32 text-amber-500/50" />
+              <div className="aspect-square rounded-2xl overflow-hidden bg-zinc-800">
+                <Image
+                  src="/images/kelso-performing-optimized.webp"
+                  alt="Kelso Kelly performing live with acoustic guitar"
+                  width={960}
+                  height={960}
+                  className="w-full h-full object-cover"
+                  priority
+                />
               </div>
               <div className="absolute -bottom-4 -right-4 w-32 h-32 bg-amber-500/20 rounded-full blur-3xl" />
             </div>

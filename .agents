@@ -1,0 +1,186 @@
+# Kelso Kelly Music - Agent Instructions
+
+## Project Overview
+This is a Next.js website for Kelso Kelly, a musician based in Northern Colorado. The site features:
+- Event schedule synced from Google Calendar
+- Photo gallery synced from Google Drive
+- Video gallery synced from Google Sheets
+- Bio, contact form, and song list pages
+
+## Tech Stack
+- **Framework**: Next.js 16 (App Router)
+- **Database**: Neon Postgres (serverless)
+- **Storage**: Vercel Blob Storage (for optimized images)
+- **APIs**: Google Calendar, Google Drive, Google Sheets
+- **Deployment**: Vercel
+- **Styling**: Tailwind CSS 4
+
+## Important Git Workflow
+
+**CRITICAL: All changes MUST be made through pull requests**
+
+1. **NEVER push directly to main branch**
+2. **Always create a feature branch** for any changes:
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+3. **Push to the feature branch**:
+   ```bash
+   git push -u origin feature/your-feature-name
+   ```
+4. **Create a pull request** using GitHub CLI:
+   ```bash
+   gh pr create --title "Your PR title" --body "Description"
+   ```
+
+### Branch Naming Conventions
+- `feature/` - New features (e.g., `feature/add-newsletter`)
+- `fix/` - Bug fixes (e.g., `fix/timezone-issue`)
+- `refactor/` - Code refactoring (e.g., `refactor/sync-logic`)
+- `docs/` - Documentation updates (e.g., `docs/update-readme`)
+
+## Architecture
+
+### Data Sync System
+The site uses **cron-based polling** instead of webhooks for reliability:
+
+- **Calendar sync**: Every 5 minutes (`/api/sync-calendar`)
+- **Photos sync**: Every 10 minutes (`/api/sync-photos`)
+- **Videos sync**: Every hour (`/api/sync-videos`)
+- **Webhook renewal**: Daily at midnight (`/api/cron/renew-webhooks`)
+
+Cron jobs are defined in `vercel.json`.
+
+### Key Directories
+- `src/app/` - Next.js App Router pages and API routes
+- `src/components/` - React components (layout, UI)
+- `src/lib/` - Business logic (sync, Google APIs, database)
+- `src/data/` - Static data and configuration
+- `src/types/` - TypeScript type definitions
+- `db/` - Database schema
+- `public/` - Static assets
+
+### API Routes
+- `/api/sync-calendar` - Sync events from Google Calendar (GET/POST)
+- `/api/sync-photos` - Sync photos from Google Drive (GET/POST)
+- `/api/sync-videos` - Sync videos from Google Sheets (GET/POST)
+- `/api/webhook-calendar` - Receive Google Calendar webhooks (POST)
+- `/api/webhook-drive` - Receive Google Drive webhooks (POST)
+- `/api/webhooks/setup` - Initialize all webhooks (POST)
+- `/api/revalidate` - Trigger cache revalidation (POST)
+
+## Environment Variables
+
+Required environment variables (stored in Vercel):
+
+```bash
+# Database
+DATABASE_URL=postgresql://...
+
+# Google Service Account
+GOOGLE_SERVICE_ACCOUNT_EMAIL=...
+GOOGLE_PRIVATE_KEY=...
+
+# Google Resources
+GOOGLE_CALENDAR_ID=...
+GOOGLE_DRIVE_PHOTOS_FOLDER_ID=...
+GOOGLE_VIDEOS_SHEET_ID=...
+
+# Vercel Blob Storage
+BLOB_READ_WRITE_TOKEN=...
+
+# Site Configuration
+NEXT_PUBLIC_SITE_URL=https://kelso-kelly-site.vercel.app
+
+# Secrets (optional)
+CRON_SECRET=...
+REVALIDATE_SECRET=...
+WEBHOOK_SETUP_SECRET=...
+```
+
+## Important Implementation Details
+
+### Timezone Handling
+Events are stored and displayed in **Mountain Time (America/Denver)**. The `formatTime()` function in `src/lib/google-calendar.ts` converts from Google's GMT/UTC timestamps to local time.
+
+### Database Schema
+See `db/schema.sql` for the complete schema. Key tables:
+- `events` - Calendar events with Google Calendar ID
+- `photos` - Optimized photos with Google Drive ID
+- `videos` - YouTube videos from Google Sheets
+- `webhook_channels` - Active webhook subscriptions
+- `sync_log` - Sync operation history
+
+### Image Optimization
+Photos from Google Drive are:
+1. Downloaded as buffers
+2. Optimized using Sharp (max 1920px width, 85% quality, WebP format)
+3. Uploaded to Vercel Blob Storage
+4. Stored in database with optimized URL
+
+### Manual Testing
+```bash
+# Trigger calendar sync
+curl -X POST https://kelso-kelly-site.vercel.app/api/sync-calendar
+
+# Trigger photo sync
+curl -X POST https://kelso-kelly-site.vercel.app/api/sync-photos
+
+# Trigger video sync
+curl -X POST https://kelso-kelly-site.vercel.app/api/sync-videos
+```
+
+## Common Tasks
+
+### Adding a New Page
+1. Create branch: `git checkout -b feature/new-page`
+2. Create page file in `src/app/(site)/page-name/page.tsx`
+3. Update navigation in `src/components/layout/Header.tsx`
+4. Test locally: `npm run dev`
+5. Push and create PR
+
+### Debugging Sync Issues
+1. Check Vercel logs (Project → Logs → Filter by "Cron")
+2. Look for sync messages every 5-10 minutes
+3. Check `sync_log` table in database
+4. Manually trigger sync via API endpoint
+5. Verify environment variables in Vercel dashboard
+
+### Modifying Sync Logic
+- Calendar sync: `src/lib/google-calendar.ts` and `src/lib/sync.ts`
+- Photos sync: `src/lib/google-drive.ts` and `src/lib/sync.ts`
+- Videos sync: `src/lib/google-sheets.ts` and `src/lib/sync.ts`
+
+## Development Workflow
+
+```bash
+# Install dependencies
+npm install
+
+# Run development server
+npm run dev
+
+# Build for production
+npm run build
+
+# Run linter
+npm run lint
+```
+
+## Deployment
+- **Automatic**: All pushes to main trigger Vercel deployment
+- **Preview**: All PRs get preview deployments
+- **Production**: https://kelso-kelly-site.vercel.app
+
+## Support Documentation
+- `SETUP_GUIDE.md` - Initial setup instructions
+- `SETUP_CHECKLIST.md` - Setup checklist
+- `TROUBLESHOOTING_CORS.md` - CORS troubleshooting guide
+
+## Notes for AI Agents
+- Always create a branch before making changes
+- Never bypass the PR requirement by pushing to main
+- Include clear commit messages that explain the "why" not just the "what"
+- Test changes locally when possible before pushing
+- Review the diff before committing
+- When creating PRs, analyze ALL commits that will be included (not just the latest)

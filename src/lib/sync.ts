@@ -157,21 +157,45 @@ export async function syncPhotos(): Promise<SyncResult> {
       
       console.log(`Found ${files.length} images in ${category} folder`);
       
-      // Get existing photos for this category to check what's already processed
+      // Get existing photos for this category 
       const existingPhotos = await getPhotos(category);
       const existingPhotoIds = new Set(existingPhotos.map(p => p.google_drive_id));
       
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         
-        // Check if already exists - if so, skip the expensive download/optimize
-        if (existingPhotoIds.has(file.id)) {
-          skippedCount++;
-          continue;
-        }
-        
         try {
-          console.log(`Processing ${file.name}...`);
+          // Check if photo already exists
+          const photoExists = existingPhotoIds.has(file.id);
+          
+          if (photoExists) {
+            // Photo exists - only update metadata (skip expensive download/optimize)
+            const existingPhoto = existingPhotos.find(p => p.google_drive_id === file.id)!;
+            const title = cleanFilenameForTitle(file.name);
+            const altText = `${title} - ${category}`;
+            
+            const result = await upsertPhoto({
+              google_drive_id: file.id,
+              title,
+              category,
+              alt_text: altText,
+              optimized_url: existingPhoto.optimized_url, // Keep existing
+              width: existingPhoto.width, // Keep existing
+              height: existingPhoto.height, // Keep existing
+              order_index: i,
+            });
+            
+            if (result.action === 'updated') {
+              updatedCount++;
+              console.log(`✓ Updated metadata: ${file.name}`);
+            } else {
+              skippedCount++;
+            }
+            continue;
+          }
+          
+          // New photo - download, optimize, and upload
+          console.log(`Processing new photo: ${file.name}...`);
           
           // Download the image
           const imageBuffer = await downloadFile(file.id);

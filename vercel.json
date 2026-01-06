@@ -3,6 +3,18 @@
     {
       "path": "/api/cron/renew-webhooks",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/sync-calendar",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/sync-photos",
+      "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/sync-videos",
+      "schedule": "0 * * * *"
     }
   ]
 }

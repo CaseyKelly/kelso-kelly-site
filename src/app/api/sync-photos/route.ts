@@ -34,13 +34,28 @@ export async function POST(request: NextRequest) {
 
 /**
  * GET /api/sync-photos
- * Get sync status
+ * Trigger photo sync via cron or manual request
  */
 export async function GET(request: NextRequest) {
-  return NextResponse.json({
-    endpoint: '/api/sync-photos',
-    method: 'POST',
-    description: 'Trigger photo sync from Google Drive to database',
-    note: 'This can take several minutes depending on number of photos',
-  });
+  try {
+    // Verify cron secret if configured
+    const authHeader = request.headers.get('authorization');
+    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    console.log('Photo sync triggered via GET (cron or manual)');
+    
+    const result = await syncPhotos();
+    
+    return NextResponse.json(result, {
+      status: result.success ? 200 : 500,
+    });
+  } catch (error) {
+    console.error('Error in sync-photos GET:', error);
+    return NextResponse.json(
+      { success: false, message: `${error}` },
+      { status: 500 }
+    );
+  }
 }

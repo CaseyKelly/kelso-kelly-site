@@ -34,12 +34,28 @@ export async function POST(request: NextRequest) {
 
 /**
  * GET /api/sync-calendar
- * Get sync status (for monitoring)
+ * Trigger calendar sync via cron or manual request
  */
 export async function GET(request: NextRequest) {
-  return NextResponse.json({
-    endpoint: '/api/sync-calendar',
-    method: 'POST',
-    description: 'Trigger calendar sync from Google Calendar to database',
-  });
+  try {
+    // Verify cron secret if configured
+    const authHeader = request.headers.get('authorization');
+    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    console.log('Calendar sync triggered via GET (cron or manual)');
+    
+    const result = await syncCalendarEvents();
+    
+    return NextResponse.json(result, {
+      status: result.success ? 200 : 500,
+    });
+  } catch (error) {
+    console.error('Error in sync-calendar GET:', error);
+    return NextResponse.json(
+      { success: false, message: `${error}` },
+      { status: 500 }
+    );
+  }
 }

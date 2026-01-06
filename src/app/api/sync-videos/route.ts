@@ -34,12 +34,28 @@ export async function POST(request: NextRequest) {
 
 /**
  * GET /api/sync-videos
- * Get sync status
+ * Trigger video sync via cron or manual request
  */
 export async function GET(request: NextRequest) {
-  return NextResponse.json({
-    endpoint: '/api/sync-videos',
-    method: 'POST',
-    description: 'Trigger video sync from Google Sheets to database',
-  });
+  try {
+    // Verify cron secret if configured
+    const authHeader = request.headers.get('authorization');
+    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    console.log('Video sync triggered via GET (cron or manual)');
+    
+    const result = await syncVideos();
+    
+    return NextResponse.json(result, {
+      status: result.success ? 200 : 500,
+    });
+  } catch (error) {
+    console.error('Error in sync-videos GET:', error);
+    return NextResponse.json(
+      { success: false, message: `${error}` },
+      { status: 500 }
+    );
+  }
 }

@@ -77,8 +77,7 @@ function parseDescription(description?: string | null): { description?: string; 
 
 /**
  * Format time from Google Calendar event
- * Google Calendar API returns datetime in the event's timezone (e.g., "2024-01-15T19:00:00-08:00")
- * We need to parse this and display it in the original timezone, not convert to UTC
+ * Converts from UTC/GMT to Mountain Time (Colorado)
  */
 function formatTime(dateTime?: string | null, date?: string | null): string {
   if (!dateTime && !date) return 'TBD';
@@ -86,21 +85,19 @@ function formatTime(dateTime?: string | null, date?: string | null): string {
   // If it's an all-day event, return generic time
   if (date && !dateTime) return 'All Day';
   
-  // Extract the time portion from the ISO string
-  // Example: "2024-01-15T19:00:00-08:00" -> "19:00:00"
-  const timePart = dateTime!.split('T')[1];
-  if (!timePart) return 'TBD';
+  // Google returns datetime in GMT/UTC, we need to convert to Mountain Time
+  // Mountain Time is UTC-7 (MDT) or UTC-6 (MST)
+  const dt = new Date(dateTime!);
   
-  // Parse hours and minutes from the time string (before timezone offset)
-  const [hoursStr, minutesStr] = timePart.split(':');
-  const hours = parseInt(hoursStr, 10);
-  const minutes = parseInt(minutesStr, 10);
+  // Convert to Mountain Time using toLocaleString
+  const mountainTime = dt.toLocaleString('en-US', {
+    timeZone: 'America/Denver',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
   
-  const ampm = hours >= 12 ? 'PM' : 'AM';
-  const displayHours = hours % 12 || 12;
-  const displayMinutes = minutes > 0 ? `:${minutes.toString().padStart(2, '0')}` : '';
-  
-  return `${displayHours}${displayMinutes} ${ampm}`;
+  return mountainTime;
 }
 
 /**

@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import Image from "next/image";
 import { Music2, CheckCircle } from "lucide-react";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Card, CardContent } from "@/components/ui/Card";
@@ -21,8 +22,19 @@ export default function BioPage() {
         />
 
         <div className="grid gap-12">
+          {/* Bio content with floating photo */}
           <div className="prose prose-invert max-w-none">
-            <div className="bg-zinc-900/50 rounded-2xl p-8 border border-zinc-800 mb-12">
+            <div className="bg-zinc-900/50 rounded-2xl p-8 border border-zinc-800 mb-8">
+              <div className="relative float-left w-48 sm:w-56 md:w-64 aspect-square rounded-xl overflow-hidden mr-6 mb-4">
+                <Image
+                  src="/images/kelso-bio-optimized.webp"
+                  alt="Kelso Kelly"
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 640px) 192px, (max-width: 768px) 224px, 256px"
+                  priority
+                />
+              </div>
               <p className="text-xl text-zinc-300 leading-relaxed m-0">
                 {bio.intro}
               </p>

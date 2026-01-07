@@ -18,12 +18,14 @@ function EventCard({ event, isPast = false }: { event: any; isPast?: boolean }) 
   return (
     <Card hover={!isPast} className={isPast ? "opacity-60" : ""}>
       <CardContent className="p-6">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
-          <div className="flex items-center gap-1 text-sm text-zinc-500">
-            <Clock className="h-4 w-4" />
-            {event.time}
+        {event.time && event.time.toLowerCase() !== 'all day' && (
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
+            <div className="flex items-center gap-1 text-sm text-zinc-500">
+              <Clock className="h-4 w-4" />
+              {event.time}
+            </div>
           </div>
-        </div>
+        )}
 
         <h3 className="text-xl font-semibold text-white mb-3">{event.title}</h3>
 
@@ -33,13 +35,15 @@ function EventCard({ event, isPast = false }: { event: any; isPast?: boolean }) 
             <span>{formatDate(event.date)}</span>
           </div>
 
-          <div className="flex items-start gap-2 text-zinc-400">
-            <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 text-amber-500" />
-            <div>
-              <p className="font-medium text-zinc-300">{event.venue}</p>
-              {event.address && <p className="text-sm">{event.address}</p>}
+          {event.venue && (
+            <div className="flex items-start gap-2 text-zinc-400">
+              <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 text-amber-500" />
+              <div>
+                <p className="font-medium text-zinc-300">{event.venue}</p>
+                {event.address && <p className="text-sm">{event.address}</p>}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {event.description && (

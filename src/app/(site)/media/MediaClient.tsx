@@ -29,9 +29,38 @@ interface VideoItem {
 }
 
 function getYouTubeId(url: string): string | null {
-  const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
-  const match = url.match(regex);
-  return match ? match[1] : null;
+  if (!url) return null;
+  
+  try {
+    // Handle various YouTube URL formats:
+    // - https://www.youtube.com/watch?v=VIDEO_ID
+    // - https://youtube.com/watch?v=VIDEO_ID
+    // - https://youtu.be/VIDEO_ID
+    // - https://www.youtube.com/embed/VIDEO_ID
+    // - https://www.youtube.com/v/VIDEO_ID
+    // - https://www.youtube.com/shorts/VIDEO_ID
+    
+    const patterns = [
+      /(?:youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/,  // youtube.com/watch?v=
+      /(?:youtu\.be\/)([a-zA-Z0-9_-]{11})/,              // youtu.be/
+      /(?:youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,    // youtube.com/embed/
+      /(?:youtube\.com\/v\/)([a-zA-Z0-9_-]{11})/,        // youtube.com/v/
+      /(?:youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,   // youtube.com/shorts/
+    ];
+    
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match && match[1]) {
+        return match[1];
+      }
+    }
+    
+    console.warn('Could not extract YouTube ID from URL:', url);
+    return null;
+  } catch (error) {
+    console.error('Error parsing YouTube URL:', error);
+    return null;
+  }
 }
 
 export default function MediaClient({ 
@@ -132,13 +161,22 @@ export default function MediaClient({
                           <iframe
                             src={`https://www.youtube.com/embed/${youtubeId}`}
                             title={video.title}
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                             allowFullScreen
-                            className="absolute inset-0 w-full h-full"
+                            className="absolute inset-0 w-full h-full border-0"
+                            loading="lazy"
                           />
                         ) : (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <Play className="h-16 w-16 text-zinc-600" />
+                          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-4">
+                            <Play className="h-12 w-12 text-zinc-600" />
+                            <p className="text-zinc-500 text-sm text-center">
+                              Unable to load video
+                            </p>
+                            {process.env.NODE_ENV === 'development' && (
+                              <p className="text-zinc-600 text-xs text-center font-mono break-all">
+                                {video.youtube_url}
+                              </p>
+                            )}
                           </div>
                         )}
                       </div>

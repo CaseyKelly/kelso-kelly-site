@@ -11,7 +11,8 @@ import { optimizeImage } from './image-optimizer';
 import { 
   upsertEvent, 
   upsertPhoto, 
-  upsertVideo, 
+  upsertVideo,
+  deleteVideo,
   deleteAllVideos,
   logSync,
   getEvents,
@@ -297,25 +298,49 @@ export async function syncVideos(): Promise<SyncResult> {
     // Get existing videos for comparison
     const existingVideos = await getVideos();
     
-    // Delete all existing videos and re-insert
-    // This is simpler than trying to diff and update
-    console.log(`Deleting ${existingVideos.length} existing videos...`);
-    await deleteAllVideos();
+    // Upsert all videos and track changes
+    let createdCount = 0;
+    let updatedCount = 0;
+    let unchangedCount = 0;
     
-    // Insert all videos
-    console.log(`Inserting ${sheetVideos.length} videos from sheet...`);
+    console.log(`Upserting ${sheetVideos.length} videos from sheet...`);
     for (const video of sheetVideos) {
-      await upsertVideo({
-        title: video.title,
-        youtube_url: video.youtubeUrl,
-        thumbnail_url: video.thumbnailUrl,
-        description: video.description,
-        category: video.category,
-        order_index: video.orderIndex,
-      });
+      try {
+        const result = await upsertVideo({
+          title: video.title,
+          youtube_url: video.youtubeUrl,
+          thumbnail_url: video.thumbnailUrl,
+          description: video.description,
+          category: video.category,
+          order_index: video.orderIndex,
+        });
+        
+        if (result.action === 'created') {
+          createdCount++;
+          console.log(`✓ Created video: ${video.title}`);
+        } else if (result.action === 'updated') {
+          updatedCount++;
+          console.log(`✓ Updated video: ${video.title}`);
+        } else {
+          unchangedCount++;
+        }
+      } catch (error) {
+        console.error(`✗ Error upserting video "${video.title}":`, error);
+        throw error; // Re-throw to fail the sync
+      }
     }
     
-    const summary = `Replaced ${existingVideos.length} videos with ${sheetVideos.length} from sheet`;
+    // Get current video URLs to find videos that should be deleted
+    const sheetVideoUrls = new Set(sheetVideos.map(v => v.youtubeUrl));
+    const videosToDelete = existingVideos.filter(v => !sheetVideoUrls.has(v.youtube_url));
+    
+    // Delete videos that are no longer in the sheet
+    for (const video of videosToDelete) {
+      await deleteVideo(video.id);
+      console.log(`✓ Deleted video: ${video.title}`);
+    }
+    
+    const summary = `Created: ${createdCount}, Updated: ${updatedCount}, Unchanged: ${unchangedCount}, Deleted: ${videosToDelete.length}`;
     console.log(`Video sync complete - ${summary}`);
     
     // Revalidate the media page
@@ -331,8 +356,11 @@ export async function syncVideos(): Promise<SyncResult> {
       success: true,
       message: `Successfully synced ${sheetVideos.length} videos from Google Sheet`,
       details: { 
-        previous: existingVideos.length,
-        current: sheetVideos.length,
+        total: sheetVideos.length,
+        created: createdCount,
+        updated: updatedCount,
+        unchanged: unchangedCount,
+        deleted: videosToDelete.length,
       },
     };
   } catch (error) {

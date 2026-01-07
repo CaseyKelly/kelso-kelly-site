@@ -100,7 +100,8 @@ export async function fetchVideosFromSheet(
       if (!title || !youtubeUrl) continue;
       
       // Skip rows that don't have valid YouTube URLs
-      if (!youtubeUrl.includes('youtube.com') && !youtubeUrl.includes('youtu.be')) {
+      const urlLower = youtubeUrl.toLowerCase();
+      if (!urlLower.includes('youtube.com') && !urlLower.includes('youtu.be')) {
         console.warn(`Invalid YouTube URL in row ${i + 2}: ${youtubeUrl}`);
         continue;
       }

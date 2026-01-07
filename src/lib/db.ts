@@ -252,8 +252,8 @@ export async function upsertVideo(video: {
   description?: string | null;
   category?: DbVideo['category'];
   order_index?: number;
-}) {
-  return sql`
+}): Promise<{ action: 'created' | 'updated' | 'unchanged'; video: DbVideo }> {
+  const result = await sql`
     INSERT INTO videos (
       title, youtube_url, thumbnail_url, description, category, order_index, updated_at
     ) VALUES (
@@ -265,8 +265,38 @@ export async function upsertVideo(video: {
       ${video.order_index ?? 0},
       NOW()
     )
-    RETURNING *
+    ON CONFLICT (youtube_url)
+    DO UPDATE SET
+      title = EXCLUDED.title,
+      thumbnail_url = EXCLUDED.thumbnail_url,
+      description = EXCLUDED.description,
+      category = EXCLUDED.category,
+      order_index = EXCLUDED.order_index,
+      updated_at = NOW()
+    WHERE 
+      videos.title IS DISTINCT FROM EXCLUDED.title OR
+      videos.thumbnail_url IS DISTINCT FROM EXCLUDED.thumbnail_url OR
+      videos.description IS DISTINCT FROM EXCLUDED.description OR
+      videos.category IS DISTINCT FROM EXCLUDED.category OR
+      videos.order_index IS DISTINCT FROM EXCLUDED.order_index
+    RETURNING *, (xmax = 0) AS inserted
   `;
+  
+  if (result.length === 0) {
+    // No row returned means WHERE clause prevented update (unchanged)
+    const existing = await sql`SELECT *, false AS inserted FROM videos WHERE youtube_url = ${video.youtube_url}`;
+    if (existing.length === 0) {
+      throw new Error(`Video with youtube_url ${video.youtube_url} not found after upsert`);
+    }
+    return { action: 'unchanged', video: existing[0] as DbVideo };
+  }
+  
+  const row = result[0] as DbVideo & { inserted: boolean };
+  
+  return { 
+    action: row.inserted ? 'created' : 'updated',
+    video: row
+  };
 }
 
 export async function deleteVideo(id: number) {

@@ -41,7 +41,7 @@ CREATE INDEX IF NOT EXISTS idx_photos_order ON photos(order_index);
 CREATE TABLE IF NOT EXISTS videos (
   id SERIAL PRIMARY KEY,
   title VARCHAR(255) NOT NULL,
-  youtube_url TEXT NOT NULL,
+  youtube_url TEXT UNIQUE NOT NULL,
   thumbnail_url TEXT,
   description TEXT,
   category VARCHAR(50), -- live, music-video, interview
@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS videos (
 );
 
 CREATE INDEX IF NOT EXISTS idx_videos_order ON videos(order_index);
+CREATE INDEX IF NOT EXISTS idx_videos_youtube_url ON videos(youtube_url);
 
 -- Sync log table (for debugging/monitoring)
 CREATE TABLE IF NOT EXISTS sync_log (

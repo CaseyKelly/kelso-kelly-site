@@ -1,0 +1,8 @@
+# Allow agents to read .env.local for configuration help
+# The ! prefix means "do not ignore this file"
+!.env.local
+
+# Add patterns here to block files from agent access
+# Example:
+# *.key
+# credentials.json

@@ -284,7 +284,10 @@ export async function upsertVideo(video: {
   
   if (result.length === 0) {
     // No row returned means WHERE clause prevented update (unchanged)
-    const existing = await sql`SELECT *, true AS inserted FROM videos WHERE youtube_url = ${video.youtube_url}`;
+    const existing = await sql`SELECT *, false AS inserted FROM videos WHERE youtube_url = ${video.youtube_url}`;
+    if (existing.length === 0) {
+      throw new Error(`Video with youtube_url ${video.youtube_url} not found after upsert`);
+    }
     return { action: 'unchanged', video: existing[0] as DbVideo };
   }
   

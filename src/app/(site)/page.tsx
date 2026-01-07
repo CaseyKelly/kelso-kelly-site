@@ -23,11 +23,11 @@ function getYouTubeId(url: string): string | null {
     // - https://www.youtube.com/shorts/VIDEO_ID
     
     const patterns = [
-      /(?:youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/,  // youtube.com/watch?v=
-      /(?:youtu\.be\/)([a-zA-Z0-9_-]{11})/,              // youtu.be/
-      /(?:youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,    // youtube.com/embed/
-      /(?:youtube\.com\/v\/)([a-zA-Z0-9_-]{11})/,        // youtube.com/v/
-      /(?:youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,   // youtube.com/shorts/
+      /(?:youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{10,12})/,  // youtube.com/watch?v=
+      /(?:youtu\.be\/)([a-zA-Z0-9_-]{10,12})/,              // youtu.be/
+      /(?:youtube\.com\/embed\/)([a-zA-Z0-9_-]{10,12})/,    // youtube.com/embed/
+      /(?:youtube\.com\/v\/)([a-zA-Z0-9_-]{10,12})/,        // youtube.com/v/
+      /(?:youtube\.com\/shorts\/)([a-zA-Z0-9_-]{10,12})/,   // youtube.com/shorts/
     ];
     
     for (const pattern of patterns) {
@@ -60,7 +60,7 @@ export default async function HomePage() {
     console.warn('Unable to fetch videos:', error);
   }
   const displayEvents = upcomingEvents.slice(0, 3);
-  const featuredVideo = videos[0]; // First video as featured
+  const featuredVideo = videos.length > 0 ? videos[0] : null;
 
   return (
     <div className="flex flex-col">
@@ -128,24 +128,23 @@ export default async function HomePage() {
       </section>
 
       {/* Featured Video Section */}
-      {featuredVideo && (() => {
-        const youtubeId = getYouTubeId(featuredVideo.youtube_url);
-        
-        return (
-          <section className="py-24 bg-zinc-900/50">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="text-center mb-12">
-                <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-                  Watch Kelso Perform
-                </h2>
-                <p className="text-zinc-400 text-lg">
-                  Experience the energy and artistry of a live performance
-                </p>
-              </div>
-              
-              <div className="max-w-5xl mx-auto">
-                <div className="relative aspect-video rounded-2xl overflow-hidden bg-zinc-900 shadow-2xl">
-                  {youtubeId ? (
+      {featuredVideo && (
+        <section className="py-24 bg-zinc-900/50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                Watch Kelso Perform
+              </h2>
+              <p className="text-zinc-400 text-lg">
+                Experience the energy and artistry of a live performance
+              </p>
+            </div>
+            
+            <div className="max-w-5xl mx-auto">
+              <div className="relative aspect-video rounded-2xl overflow-hidden bg-zinc-900 shadow-2xl">
+                {(() => {
+                  const youtubeId = getYouTubeId(featuredVideo.youtube_url);
+                  return youtubeId ? (
                     <iframe
                       src={`https://www.youtube.com/embed/${youtubeId}?rel=0`}
                       title={featuredVideo.title}
@@ -160,27 +159,27 @@ export default async function HomePage() {
                         Unable to load video
                       </p>
                     </div>
-                  )}
-                </div>
-                {featuredVideo.description && (
-                  <p className="text-center text-zinc-400 mt-6">
-                    {featuredVideo.description}
-                  </p>
-                )}
-                <div className="text-center mt-6">
-                  <Link href="/media">
-                    <Button variant="secondary" className="gap-2">
-                      <Music2 className="h-4 w-4" />
-                      View All Videos & Photos
-                      <ArrowRight className="h-4 w-4" />
-                    </Button>
-                  </Link>
-                </div>
+                  );
+                })()}
+              </div>
+              {featuredVideo.description && (
+                <p className="text-center text-zinc-400 mt-6">
+                  {featuredVideo.description}
+                </p>
+              )}
+              <div className="text-center mt-6">
+                <Link href="/media">
+                  <Button variant="secondary" className="gap-2">
+                    <Music2 className="h-4 w-4" />
+                    View All Videos & Photos
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
               </div>
             </div>
-          </section>
-        );
-      })()}
+          </div>
+        </section>
+      )}
 
       <section className="py-24 bg-zinc-950">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

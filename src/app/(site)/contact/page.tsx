@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Mail, Phone, MapPin, Send, CheckCircle, Music } from "lucide-react";
+import { Mail, Phone, MapPin, Send, CheckCircle, Music, AlertCircle, X } from "lucide-react";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -18,16 +18,36 @@ export default function ContactPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setError(null);
 
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    try {
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formState),
+      });
 
-    console.log("Form submitted:", formState);
-    setIsSubmitted(true);
-    setIsSubmitting(false);
+      const result = await response.json();
+
+      if (result.success) {
+        setIsSubmitted(true);
+      } else {
+        console.error("Failed to send message:", result.message);
+        setError(result.message || "Failed to send message. Please try again or email directly.");
+      }
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      setError("Failed to send message. Please try again or email directly.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (
@@ -108,6 +128,19 @@ export default function ContactPage() {
 
         <Card>
           <CardContent className="p-8">
+            {error && (
+              <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-lg flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                <p className="text-red-200 text-sm flex-1">{error}</p>
+                <button
+                  onClick={() => setError(null)}
+                  className="text-red-400 hover:text-red-300 transition-colors"
+                  aria-label="Dismiss error"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            )}
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid md:grid-cols-2 gap-6">
                 <div>

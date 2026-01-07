@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 
+// Validate required environment variables at initialization
+if (!process.env.RESEND_API_KEY) {
+  throw new Error("RESEND_API_KEY environment variable is not set");
+}
+if (!process.env.RESEND_FROM_EMAIL) {
+  throw new Error("RESEND_FROM_EMAIL environment variable is not set");
+}
+if (!process.env.CONTACT_EMAIL) {
+  throw new Error("CONTACT_EMAIL environment variable is not set");
+}
+
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export const dynamic = "force-dynamic";
@@ -13,6 +24,14 @@ interface ContactFormData {
   date: string;
   message: string;
   newsletter: boolean;
+}
+
+// Email validation regex
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Sanitize string input to prevent injection
+function sanitizeInput(input: string): string {
+  return input.trim().replace(/[<>]/g, "");
 }
 
 export async function POST(request: NextRequest) {
@@ -28,28 +47,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get the recipient email from environment variable
-    // Use CONTACT_EMAIL for testing (your email), can switch to dad's email later
-    const recipientEmail = process.env.CONTACT_EMAIL;
-
-    if (!recipientEmail) {
-      console.error("CONTACT_EMAIL environment variable not set");
+    // Validate email format
+    if (!EMAIL_REGEX.test(email)) {
       return NextResponse.json(
-        { success: false, message: "Email configuration error" },
-        { status: 500 }
+        { success: false, message: "Invalid email address" },
+        { status: 400 }
       );
     }
 
+    // Sanitize inputs
+    const sanitizedName = sanitizeInput(name);
+    const sanitizedMessage = sanitizeInput(message);
+    const sanitizedEventType = eventType ? sanitizeInput(eventType) : "";
+
+    const recipientEmail = process.env.CONTACT_EMAIL!;
+    const fromEmail = process.env.RESEND_FROM_EMAIL!;
+
     // Format the email content
     const emailContent = `
-New contact form submission from ${name}
+New contact form submission from ${sanitizedName}
 
 Email: ${email}
-${eventType ? `Event Type: ${eventType}` : ""}
+${sanitizedEventType ? `Event Type: ${sanitizedEventType}` : ""}
 ${date ? `Event Date: ${date}` : ""}
 
 Message:
-${message}
+${sanitizedMessage}
 
 ${newsletter ? "✓ Opted in to newsletter updates" : ""}
 
@@ -59,10 +82,10 @@ Submitted from kelso-kelly-music contact form
 
     // Send email using Resend
     const emailResponse = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL || "contact@kelso-kelly-music.com",
+      from: fromEmail,
       to: recipientEmail,
       replyTo: email, // Allow easy reply to the person who submitted
-      subject: `New Contact Form: ${eventType || "General Inquiry"} - ${name}`,
+      subject: `New Contact Form: ${sanitizedEventType || "General Inquiry"} - ${sanitizedName}`,
       text: emailContent,
     });
 

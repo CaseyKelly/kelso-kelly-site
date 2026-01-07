@@ -65,3 +65,17 @@ html {
 .bg-gradient-radial {
   background: radial-gradient(ellipse at center, var(--tw-gradient-from) 0%, var(--tw-gradient-to) 70%);
 }
+
+/* Subtle parallax zoom effect for hero image */
+@keyframes hero-zoom {
+  0% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1.15);
+  }
+}
+
+.hero-image {
+  animation: hero-zoom 20s ease-out infinite alternate;
+}

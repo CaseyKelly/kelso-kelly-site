@@ -122,8 +122,8 @@ export async function syncCalendarEvents(): Promise<SyncResult> {
 
 /**
  * Sync photos from Google Drive to database
- * Expects folder structure: parentFolderId/[category]/[images]
- * Categories: performance, backstage, press, promo
+ * Looks for photos directly in the main folder
+ * All photos will be assigned the 'performance' category by default
  */
 export async function syncPhotos(): Promise<SyncResult> {
   try {
@@ -133,115 +133,108 @@ export async function syncPhotos(): Promise<SyncResult> {
       throw new Error('GOOGLE_DRIVE_PHOTOS_FOLDER_ID not configured');
     }
     
-    const parentFolderId = process.env.GOOGLE_DRIVE_PHOTOS_FOLDER_ID;
-    const categories = ['performance', 'backstage', 'press', 'promo'] as const;
+    const folderId = process.env.GOOGLE_DRIVE_PHOTOS_FOLDER_ID;
+    const defaultCategory = 'performance';
     
     let createdCount = 0;
     let updatedCount = 0;
     let skippedCount = 0;
     let errorCount = 0;
     
-    for (const category of categories) {
-      console.log(`Processing ${category} photos...`);
+    console.log('Fetching images from Google Drive...');
+    console.log('Folder ID:', folderId);
+    
+    // List all image files in the main folder
+    const files = await listImageFilesInFolder(folderId);
+    
+    console.log(`Found ${files.length} images in Drive folder`);
+    console.log('Files:', files.map(f => ({ id: f.id, name: f.name })));
+    
+    // Get existing photos from database
+    const existingPhotos = await getPhotos();
+    console.log(`Found ${existingPhotos.length} existing photos in database`);
+    const existingPhotoIds = new Set(existingPhotos.map(p => p.google_drive_id));
+    
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
       
-      // Find the category folder
-      const folderId = await findFolderByName(parentFolderId, category);
-      
-      if (!folderId) {
-        console.log(`No ${category} folder found, skipping...`);
-        continue;
-      }
-      
-      // List all image files in the category folder
-      const files = await listImageFilesInFolder(folderId);
-      
-      console.log(`Found ${files.length} images in ${category} folder`);
-      
-      // Get existing photos for this category 
-      const existingPhotos = await getPhotos(category);
-      const existingPhotoIds = new Set(existingPhotos.map(p => p.google_drive_id));
-      
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+      try {
+        // Check if photo already exists
+        const photoExists = existingPhotoIds.has(file.id);
         
-        try {
-          // Check if photo already exists
-          const photoExists = existingPhotoIds.has(file.id);
-          
-          if (photoExists) {
-            // Photo exists - only update metadata (skip expensive download/optimize)
-            const existingPhoto = existingPhotos.find(p => p.google_drive_id === file.id)!;
-            const title = cleanFilenameForTitle(file.name);
-            const altText = `${title} - ${category}`;
-            
-            const result = await upsertPhoto({
-              google_drive_id: file.id,
-              title,
-              category,
-              alt_text: altText,
-              optimized_url: existingPhoto.optimized_url, // Keep existing
-              width: existingPhoto.width, // Keep existing
-              height: existingPhoto.height, // Keep existing
-              order_index: i,
-            });
-            
-            if (result.action === 'updated') {
-              updatedCount++;
-              console.log(`✓ Updated metadata: ${file.name}`);
-            } else {
-              skippedCount++;
-            }
-            continue;
-          }
-          
-          // New photo - download, optimize, and upload
-          console.log(`Processing new photo: ${file.name}...`);
-          
-          // Download the image
-          const imageBuffer = await downloadFile(file.id);
-          
-          // Optimize the image
-          const optimized = await optimizeImage(imageBuffer, {
-            maxWidth: 1920,
-            quality: 85,
-            format: 'webp',
-          });
-          
-          // Upload to Vercel Blob Storage
-          const filename = `${category}/${file.id}.${optimized.format}`;
-          const blob = await put(filename, optimized.buffer, {
-            access: 'public',
-            contentType: `image/${optimized.format}`,
-          });
-          
-          // Generate title and alt text from filename
+        if (photoExists) {
+          // Photo exists - only update metadata (skip expensive download/optimize)
+          const existingPhoto = existingPhotos.find(p => p.google_drive_id === file.id)!;
           const title = cleanFilenameForTitle(file.name);
-          const altText = `${title} - ${category}`;
+          const altText = `${title} - Kelso Kelly`;
           
-          // Save to database
           const result = await upsertPhoto({
             google_drive_id: file.id,
             title,
-            category,
+            category: defaultCategory,
             alt_text: altText,
-            optimized_url: blob.url,
-            width: optimized.width,
-            height: optimized.height,
+            optimized_url: existingPhoto.optimized_url, // Keep existing
+            width: existingPhoto.width, // Keep existing
+            height: existingPhoto.height, // Keep existing
             order_index: i,
           });
           
-          if (result.action === 'created') {
-            createdCount++;
-            console.log(`✓ Created photo: ${file.name}`);
-          } else if (result.action === 'updated') {
+          if (result.action === 'updated') {
             updatedCount++;
-            console.log(`✓ Updated photo: ${file.name}`);
+            console.log(`✓ Updated metadata: ${file.name}`);
+          } else {
+            skippedCount++;
           }
-        } catch (error) {
-          errorCount++;
-          console.error(`✗ Error processing ${file.name}:`, error);
-          // Continue with next file
+          continue;
         }
+        
+        // New photo - download, optimize, and upload
+        console.log(`Processing new photo: ${file.name}...`);
+        
+        // Download the image
+        const imageBuffer = await downloadFile(file.id);
+        
+        // Optimize the image
+        const optimized = await optimizeImage(imageBuffer, {
+          maxWidth: 1920,
+          quality: 85,
+          format: 'webp',
+        });
+        
+        // Upload to Vercel Blob Storage
+        const filename = `photos/${file.id}.${optimized.format}`;
+        const blob = await put(filename, optimized.buffer, {
+          access: 'public',
+          contentType: `image/${optimized.format}`,
+        });
+        
+        // Generate title and alt text from filename
+        const title = cleanFilenameForTitle(file.name);
+        const altText = `${title} - Kelso Kelly`;
+        
+        // Save to database
+        const result = await upsertPhoto({
+          google_drive_id: file.id,
+          title,
+          category: defaultCategory,
+          alt_text: altText,
+          optimized_url: blob.url,
+          width: optimized.width,
+          height: optimized.height,
+          order_index: i,
+        });
+        
+        if (result.action === 'created') {
+          createdCount++;
+          console.log(`✓ Created photo: ${file.name}`);
+        } else if (result.action === 'updated') {
+          updatedCount++;
+          console.log(`✓ Updated photo: ${file.name}`);
+        }
+      } catch (error) {
+        errorCount++;
+        console.error(`✗ Error processing ${file.name}:`, error);
+        // Continue with next file
       }
     }
     

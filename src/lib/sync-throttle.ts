@@ -1,35 +1,39 @@
 /**
  * Sync throttling mechanism to prevent excessive database operations.
- * Tracks last sync times and enforces minimum intervals between syncs.
+ * Uses the sync_log table to persist state across serverless cold starts.
  */
 
-const lastSyncTimes = new Map<string, number>();
+import { getLastSuccessfulSync } from './db';
+import type { DbSyncLog } from './db';
 
 /**
  * Check if a sync operation should proceed based on throttling rules.
- * @param syncType - Identifier for the sync operation (e.g., 'calendar', 'photos', 'videos')
+ * Uses database-backed state that persists across serverless cold starts.
+ * @param syncType - The type of sync operation (e.g., 'calendar', 'photos', 'videos')
  * @param minIntervalMs - Minimum milliseconds between syncs
  * @returns true if sync should proceed, false if throttled
  */
-export function shouldSync(syncType: string, minIntervalMs: number): boolean {
-  const now = Date.now();
-  const lastSync = lastSyncTimes.get(syncType) || 0;
+export async function shouldSync(
+  syncType: DbSyncLog['sync_type'],
+  minIntervalMs: number
+): Promise<boolean> {
+  const lastSync = await getLastSuccessfulSync(syncType);
 
-  if (now - lastSync < minIntervalMs) {
+  if (!lastSync) {
+    // Never synced before, allow it
+    return true;
+  }
+
+  const now = Date.now();
+  const lastSyncTime = new Date(lastSync).getTime();
+  const timeSinceLastSync = now - lastSyncTime;
+
+  if (timeSinceLastSync < minIntervalMs) {
     console.log(
-      `Throttling ${syncType} sync - last sync ${Math.round((now - lastSync) / 1000)}s ago`
+      `Throttling ${syncType} sync - last sync ${Math.round(timeSinceLastSync / 1000)}s ago`
     );
     return false;
   }
 
-  lastSyncTimes.set(syncType, now);
   return true;
-}
-
-/**
- * Record that a sync operation completed successfully.
- * @param syncType - Identifier for the sync operation
- */
-export function recordSync(syncType: string): void {
-  lastSyncTimes.set(syncType, Date.now());
 }

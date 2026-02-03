@@ -361,6 +361,35 @@ export async function getRecentSyncLogs(limit = 20) {
 }
 
 /**
+ * Get the last successful sync time for a given sync type.
+ * Used by throttling mechanism to persist state across serverless cold starts.
+ * @param syncType - The type of sync operation
+ * @returns Date of last successful sync, or null if never synced
+ */
+export async function getLastSuccessfulSync(syncType: DbSyncLog['sync_type']): Promise<Date | null> {
+  const result = await sql`
+    SELECT synced_at FROM sync_log
+    WHERE sync_type = ${syncType} AND status = 'success'
+    ORDER BY synced_at DESC
+    LIMIT 1
+  `;
+  return result.length > 0 ? result[0].synced_at : null;
+}
+
+/**
+ * Get a single photo by its Google Drive ID.
+ * Used for efficient sync operations when only one photo's data is needed.
+ * @param driveId - The Google Drive file ID
+ * @returns The photo record, or null if not found
+ */
+export async function getPhotoByDriveId(driveId: string): Promise<DbPhoto | null> {
+  const result = await sql`
+    SELECT * FROM photos WHERE google_drive_id = ${driveId}
+  `;
+  return result.length > 0 ? result[0] as DbPhoto : null;
+}
+
+/**
  * Clean up old sync logs to prevent unbounded table growth.
  * @param daysToKeep - Number of days of logs to retain (default: 30)
  * @returns Number of deleted log entries
@@ -368,7 +397,7 @@ export async function getRecentSyncLogs(limit = 20) {
 export async function cleanupOldSyncLogs(daysToKeep = 30): Promise<number> {
   const result = await sql`
     DELETE FROM sync_log
-    WHERE synced_at < NOW() - INTERVAL '${daysToKeep} days'
+    WHERE synced_at < NOW() - INTERVAL '1 day' * ${daysToKeep}
     RETURNING id
   `;
   return result.length;

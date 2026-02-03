@@ -102,10 +102,37 @@ export async function getPhotos(category?: DbPhoto['category']) {
 
 export async function getVideos() {
   const result = await sql`
-    SELECT * FROM videos 
+    SELECT * FROM videos
     ORDER BY order_index ASC, created_at DESC
   `;
   return result as DbVideo[];
+}
+
+/**
+ * Get only event IDs for efficient sync operations.
+ * Avoids fetching full event data when only IDs are needed.
+ */
+export async function getEventIds(): Promise<Set<string>> {
+  const result = await sql`SELECT google_event_id FROM events`;
+  return new Set(result.map(r => r.google_event_id as string));
+}
+
+/**
+ * Get only photo IDs for efficient sync operations.
+ * Avoids fetching full photo data when only IDs are needed.
+ */
+export async function getPhotoIds(): Promise<Set<string>> {
+  const result = await sql`SELECT google_drive_id FROM photos`;
+  return new Set(result.map(r => r.google_drive_id as string));
+}
+
+/**
+ * Get only video URLs for efficient sync operations.
+ * Avoids fetching full video data when only URLs are needed.
+ */
+export async function getVideoUrls(): Promise<Set<string>> {
+  const result = await sql`SELECT youtube_url FROM videos`;
+  return new Set(result.map(r => r.youtube_url as string));
 }
 
 export async function upsertEvent(event: {
@@ -326,11 +353,54 @@ export async function logSync(log: {
 
 export async function getRecentSyncLogs(limit = 20) {
   const result = await sql`
-    SELECT * FROM sync_log 
+    SELECT * FROM sync_log
     ORDER BY synced_at DESC
     LIMIT ${limit}
   `;
   return result as DbSyncLog[];
+}
+
+/**
+ * Get the last successful sync time for a given sync type.
+ * Used by throttling mechanism to persist state across serverless cold starts.
+ * @param syncType - The type of sync operation
+ * @returns Date of last successful sync, or null if never synced
+ */
+export async function getLastSuccessfulSync(syncType: DbSyncLog['sync_type']): Promise<Date | null> {
+  const result = await sql`
+    SELECT synced_at FROM sync_log
+    WHERE sync_type = ${syncType} AND status = 'success'
+    ORDER BY synced_at DESC
+    LIMIT 1
+  `;
+  return result.length > 0 ? result[0].synced_at : null;
+}
+
+/**
+ * Get a single photo by its Google Drive ID.
+ * Used for efficient sync operations when only one photo's data is needed.
+ * @param driveId - The Google Drive file ID
+ * @returns The photo record, or null if not found
+ */
+export async function getPhotoByDriveId(driveId: string): Promise<DbPhoto | null> {
+  const result = await sql`
+    SELECT * FROM photos WHERE google_drive_id = ${driveId}
+  `;
+  return result.length > 0 ? result[0] as DbPhoto : null;
+}
+
+/**
+ * Clean up old sync logs to prevent unbounded table growth.
+ * @param daysToKeep - Number of days of logs to retain (default: 30)
+ * @returns Number of deleted log entries
+ */
+export async function cleanupOldSyncLogs(daysToKeep = 30): Promise<number> {
+  const result = await sql`
+    DELETE FROM sync_log
+    WHERE synced_at < NOW() - INTERVAL '1 day' * ${daysToKeep}
+    RETURNING id
+  `;
+  return result.length;
 }
 
 export async function upsertWebhookChannel(channel: {

@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { renewWebhooks } from '@/lib/webhooks';
+import { cleanupOldSyncLogs } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/cron/renew-webhooks
- * Cron job to renew expiring webhooks
+ * Cron job to renew expiring webhooks and clean up old sync logs
  * Runs daily via Vercel Cron
  */
 export async function GET(request: NextRequest) {
@@ -17,21 +18,26 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('Running webhook renewal cron job...');
-    
+
     // Get the base URL
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ||
                     process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` :
                     'http://localhost:3000';
-    
+
     const results = await renewWebhooks(baseUrl);
-    
+
     console.log('Webhook renewal completed:', results);
-    
+
+    // Clean up old sync logs (keep last 30 days)
+    const deletedCount = await cleanupOldSyncLogs(30);
+    console.log(`Cleaned up ${deletedCount} old sync logs`);
+
     return NextResponse.json({
       success: true,
       renewed: results.renewed,
       failed: results.failed,
-      message: `Renewed ${results.renewed.length} webhooks, ${results.failed.length} failed`,
+      syncLogsDeleted: deletedCount,
+      message: `Renewed ${results.renewed.length} webhooks, ${results.failed.length} failed, cleaned up ${deletedCount} old sync logs`,
     });
   } catch (error) {
     console.error('Error in webhook renewal cron:', error);

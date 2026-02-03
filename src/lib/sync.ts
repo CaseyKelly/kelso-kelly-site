@@ -1,26 +1,32 @@
 import { fetchAllCalendarEvents } from './google-calendar';
-import { 
-  listImageFilesInFolder, 
-  downloadFile, 
-  getCategoryFromFolderName, 
+import {
+  listImageFilesInFolder,
+  downloadFile,
+  getCategoryFromFolderName,
   cleanFilenameForTitle,
   findFolderByName
 } from './google-drive';
 import { fetchVideosFromSheetWithThumbnails } from './google-sheets';
 import { optimizeImage } from './image-optimizer';
-import { 
-  upsertEvent, 
-  upsertPhoto, 
+import {
+  sql,
+  upsertEvent,
+  upsertPhoto,
   upsertVideo,
   deleteVideo,
   deleteAllVideos,
   logSync,
   getEvents,
   getPhotos,
-  getVideos
+  getVideos,
+  getEventIds,
+  getPhotoIds,
+  getPhotoByDriveId,
+  getVideoUrls
 } from './db';
 import { put } from '@vercel/blob';
 import { revalidatePath } from 'next/cache';
+import { shouldSync } from './sync-throttle';
 
 export interface SyncResult {
   success: boolean;
@@ -30,19 +36,28 @@ export interface SyncResult {
 
 /**
  * Sync events from Google Calendar to database
+ * @param force - If true, bypass throttling (used by webhooks)
  */
-export async function syncCalendarEvents(): Promise<SyncResult> {
+export async function syncCalendarEvents(force = false): Promise<SyncResult> {
+  // Throttle: Don't sync if synced within last 2 minutes (unless forced)
+  if (!force && !(await shouldSync('calendar', 2 * 60 * 1000))) {
+    return {
+      success: true,
+      message: 'Calendar sync throttled (recent sync)',
+      details: { throttled: true },
+    };
+  }
+
   try {
     console.log('Starting calendar sync...');
-    
+
     // Fetch all events from Google Calendar
     const calendarEvents = await fetchAllCalendarEvents();
-    
+
     console.log(`Found ${calendarEvents.length} events in Google Calendar`);
-    
-    // Get existing events from database to check for deletions
-    const existingEvents = await getEvents();
-    const existingEventIds = new Set(existingEvents.map(e => e.google_event_id));
+
+    // Get existing event IDs from database (optimized query)
+    const existingEventIds = await getEventIds();
     const calendarEventIds = new Set(calendarEvents.map(e => e.id));
     
     // Upsert all calendar events and track changes
@@ -85,20 +100,20 @@ export async function syncCalendarEvents(): Promise<SyncResult> {
     
     const summary = `Created: ${createdCount}, Updated: ${updatedCount}, Unchanged: ${unchangedCount}`;
     console.log(`Calendar sync complete - ${summary}`);
-    
+
     // Revalidate the schedule page
     revalidatePath('/schedule');
-    
+
     await logSync({
       sync_type: 'calendar',
       status: 'success',
       message: summary,
     });
-    
+
     return {
       success: true,
       message: `Successfully synced ${calendarEvents.length} events from Google Calendar`,
-      details: { 
+      details: {
         total: calendarEvents.length,
         created: createdCount,
         updated: updatedCount,
@@ -107,13 +122,13 @@ export async function syncCalendarEvents(): Promise<SyncResult> {
     };
   } catch (error) {
     console.error('Error syncing calendar events:', error);
-    
+
     await logSync({
       sync_type: 'calendar',
       status: 'error',
       message: `${error}`,
     });
-    
+
     return {
       success: false,
       message: `Failed to sync calendar events: ${error}`,
@@ -125,50 +140,64 @@ export async function syncCalendarEvents(): Promise<SyncResult> {
  * Sync photos from Google Drive to database
  * Looks for photos directly in the main folder
  * All photos will be assigned the 'performance' category by default
+ * @param force - If true, bypass throttling (used by webhooks)
  */
-export async function syncPhotos(): Promise<SyncResult> {
+export async function syncPhotos(force = false): Promise<SyncResult> {
+  // Throttle: Don't sync if synced within last 5 minutes (unless forced)
+  if (!force && !(await shouldSync('photos', 5 * 60 * 1000))) {
+    return {
+      success: true,
+      message: 'Photo sync throttled (recent sync)',
+      details: { throttled: true },
+    };
+  }
+
   try {
     console.log('Starting photo sync...');
-    
+
     if (!process.env.GOOGLE_DRIVE_PHOTOS_FOLDER_ID) {
       throw new Error('GOOGLE_DRIVE_PHOTOS_FOLDER_ID not configured');
     }
-    
+
     const folderId = process.env.GOOGLE_DRIVE_PHOTOS_FOLDER_ID;
     const defaultCategory = 'performance';
-    
+
     let createdCount = 0;
     let updatedCount = 0;
     let skippedCount = 0;
     let errorCount = 0;
-    
+
     console.log('Fetching images from Google Drive...');
     console.log('Folder ID:', folderId);
-    
+
     // List all image files in the main folder
     const files = await listImageFilesInFolder(folderId);
-    
+
     console.log(`Found ${files.length} images in Drive folder`);
     console.log('Files:', files.map(f => ({ id: f.id, name: f.name })));
-    
-    // Get existing photos from database
-    const existingPhotos = await getPhotos();
-    console.log(`Found ${existingPhotos.length} existing photos in database`);
-    const existingPhotoIds = new Set(existingPhotos.map(p => p.google_drive_id));
-    
+
+    // Get only existing photo IDs (optimized query)
+    const existingPhotoIds = await getPhotoIds();
+    console.log(`Found ${existingPhotoIds.size} existing photos in database`);
+
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      
+
       try {
         // Check if photo already exists
         const photoExists = existingPhotoIds.has(file.id);
-        
+
         if (photoExists) {
-          // Photo exists - only update metadata (skip expensive download/optimize)
-          const existingPhoto = existingPhotos.find(p => p.google_drive_id === file.id)!;
+          // Photo exists - fetch only this photo's data for metadata update
+          const existingPhoto = await getPhotoByDriveId(file.id);
+          if (!existingPhoto) {
+            console.error(`Photo ${file.id} not found in database despite being in ID set`);
+            continue;
+          }
+
           const title = cleanFilenameForTitle(file.name);
           const altText = `${title} - Kelso Kelly`;
-          
+
           const result = await upsertPhoto({
             google_drive_id: file.id,
             title,
@@ -179,7 +208,7 @@ export async function syncPhotos(): Promise<SyncResult> {
             height: existingPhoto.height, // Keep existing
             order_index: i,
           });
-          
+
           if (result.action === 'updated') {
             updatedCount++;
             console.log(`✓ Updated metadata: ${file.name}`);
@@ -241,20 +270,20 @@ export async function syncPhotos(): Promise<SyncResult> {
     
     const summary = `Created: ${createdCount}, Updated: ${updatedCount}, Skipped: ${skippedCount}, Errors: ${errorCount}`;
     console.log(`Photo sync complete - ${summary}`);
-    
+
     // Revalidate the media page
     revalidatePath('/media');
-    
+
     await logSync({
       sync_type: 'photos',
       status: errorCount > 0 ? 'error' : 'success',
       message: summary,
     });
-    
+
     return {
       success: errorCount === 0,
       message: `Photo sync complete - ${summary}`,
-      details: { 
+      details: {
         created: createdCount,
         updated: updatedCount,
         skipped: skippedCount,
@@ -263,13 +292,13 @@ export async function syncPhotos(): Promise<SyncResult> {
     };
   } catch (error) {
     console.error('Error syncing photos:', error);
-    
+
     await logSync({
       sync_type: 'photos',
       status: 'error',
       message: `${error}`,
     });
-    
+
     return {
       success: false,
       message: `Failed to sync photos: ${error}`,
@@ -279,30 +308,40 @@ export async function syncPhotos(): Promise<SyncResult> {
 
 /**
  * Sync videos from Google Sheet to database
+ * @param force - If true, bypass throttling (used by webhooks)
  */
-export async function syncVideos(): Promise<SyncResult> {
+export async function syncVideos(force = false): Promise<SyncResult> {
+  // Throttle: Don't sync if synced within last 3 minutes (unless forced)
+  if (!force && !(await shouldSync('videos', 3 * 60 * 1000))) {
+    return {
+      success: true,
+      message: 'Video sync throttled (recent sync)',
+      details: { throttled: true },
+    };
+  }
+
   try {
     console.log('Starting video sync...');
-    
+
     if (!process.env.GOOGLE_VIDEOS_SHEET_ID) {
       throw new Error('GOOGLE_VIDEOS_SHEET_ID not configured');
     }
-    
+
     // Fetch videos from Google Sheet
     const sheetVideos = await fetchVideosFromSheetWithThumbnails(
       process.env.GOOGLE_VIDEOS_SHEET_ID
     );
-    
+
     console.log(`Found ${sheetVideos.length} videos in Google Sheet`);
-    
-    // Get existing videos for comparison
-    const existingVideos = await getVideos();
-    
+
+    // Get existing video URLs (optimized query) - don't fetch full data yet
+    const existingVideoUrls = await getVideoUrls();
+
     // Upsert all videos and track changes
     let createdCount = 0;
     let updatedCount = 0;
     let unchangedCount = 0;
-    
+
     console.log(`Upserting ${sheetVideos.length} videos from sheet...`);
     for (const video of sheetVideos) {
       try {
@@ -314,7 +353,7 @@ export async function syncVideos(): Promise<SyncResult> {
           category: video.category,
           order_index: video.orderIndex,
         });
-        
+
         if (result.action === 'created') {
           createdCount++;
           console.log(`✓ Created video: ${video.title}`);
@@ -329,49 +368,48 @@ export async function syncVideos(): Promise<SyncResult> {
         throw error; // Re-throw to fail the sync
       }
     }
-    
-    // Get current video URLs to find videos that should be deleted
+
+    // Delete videos not in the sheet using targeted deletion (avoid fetching full data)
     const sheetVideoUrls = new Set(sheetVideos.map(v => v.youtubeUrl));
-    const videosToDelete = existingVideos.filter(v => !sheetVideoUrls.has(v.youtube_url));
-    
-    // Delete videos that are no longer in the sheet
-    for (const video of videosToDelete) {
-      await deleteVideo(video.id);
-      console.log(`✓ Deleted video: ${video.title}`);
+    const urlsToDelete = [...existingVideoUrls].filter(url => !sheetVideoUrls.has(url));
+
+    for (const url of urlsToDelete) {
+      await sql`DELETE FROM videos WHERE youtube_url = ${url}`;
+      console.log(`✓ Deleted video with URL: ${url}`);
     }
-    
-    const summary = `Created: ${createdCount}, Updated: ${updatedCount}, Unchanged: ${unchangedCount}, Deleted: ${videosToDelete.length}`;
+
+    const summary = `Created: ${createdCount}, Updated: ${updatedCount}, Unchanged: ${unchangedCount}, Deleted: ${urlsToDelete.length}`;
     console.log(`Video sync complete - ${summary}`);
-    
+
     // Revalidate the media page
     revalidatePath('/media');
-    
+
     await logSync({
       sync_type: 'videos',
       status: 'success',
       message: summary,
     });
-    
+
     return {
       success: true,
       message: `Successfully synced ${sheetVideos.length} videos from Google Sheet`,
-      details: { 
+      details: {
         total: sheetVideos.length,
         created: createdCount,
         updated: updatedCount,
         unchanged: unchangedCount,
-        deleted: videosToDelete.length,
+        deleted: urlsToDelete.length,
       },
     };
   } catch (error) {
     console.error('Error syncing videos:', error);
-    
+
     await logSync({
       sync_type: 'videos',
       status: 'error',
       message: `${error}`,
     });
-    
+
     return {
       success: false,
       message: `Failed to sync videos: ${error}`,

@@ -32,16 +32,16 @@ export async function POST(request: NextRequest) {
     // Change notification - trigger photo sync
     if (resourceState === 'change' || resourceState === 'update' || resourceState === 'exists') {
       console.log('Drive folder changed, triggering photo sync...');
-      
-      // Trigger sync asynchronously (don't wait for it)
-      syncPhotos()
+
+      // Trigger sync asynchronously with force=true to bypass throttling
+      syncPhotos(true)
         .then(result => {
           console.log('Photo sync completed:', result);
         })
         .catch(error => {
           console.error('Photo sync failed:', error);
         });
-      
+
       // Acknowledge immediately
       return NextResponse.json({ received: true, syncing: true });
     }

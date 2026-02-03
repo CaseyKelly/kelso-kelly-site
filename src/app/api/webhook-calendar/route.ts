@@ -32,16 +32,16 @@ export async function POST(request: NextRequest) {
     // Actual change notification - trigger sync
     if (resourceState === 'exists' || resourceState === 'not_exists') {
       console.log('Calendar changed, triggering sync...');
-      
-      // Trigger sync asynchronously (don't wait for it)
-      syncCalendarEvents()
+
+      // Trigger sync asynchronously with force=true to bypass throttling
+      syncCalendarEvents(true)
         .then(result => {
           console.log('Calendar sync completed:', result);
         })
         .catch(error => {
           console.error('Calendar sync failed:', error);
         });
-      
+
       // Acknowledge immediately
       return NextResponse.json({ received: true, syncing: true });
     }

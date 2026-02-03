@@ -7,7 +7,7 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 import { getUpcomingEvents, getPastEvents } from "@/lib/db";
 import { formatDate } from "@/lib/utils";
 
-export const revalidate = 60;
+export const revalidate = 3600; // 1 hour
 
 export const metadata: Metadata = {
   title: "Schedule",

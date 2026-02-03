@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import { getPhotos, getVideos } from "@/lib/db";
 import MediaClient from "./MediaClient";
 
-export const revalidate = 60;
+export const revalidate = 3600; // 1 hour
 
 export const metadata: Metadata = {
   title: "Photos & Videos",

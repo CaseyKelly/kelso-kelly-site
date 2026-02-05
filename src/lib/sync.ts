@@ -14,6 +14,7 @@ import {
   upsertPhoto,
   upsertVideo,
   deleteVideo,
+  deletePhoto,
   deleteAllVideos,
   logSync,
   getEvents,
@@ -165,6 +166,7 @@ export async function syncPhotos(force = false): Promise<SyncResult> {
     let createdCount = 0;
     let updatedCount = 0;
     let skippedCount = 0;
+    let deletedCount = 0;
     let errorCount = 0;
 
     console.log('Fetching images from Google Drive...');
@@ -179,6 +181,9 @@ export async function syncPhotos(force = false): Promise<SyncResult> {
     // Get only existing photo IDs (optimized query)
     const existingPhotoIds = await getPhotoIds();
     console.log(`Found ${existingPhotoIds.size} existing photos in database`);
+    
+    // Create a Set of Drive file IDs for efficient lookup
+    const driveFileIds = new Set(files.map(f => f.id));
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
@@ -268,7 +273,23 @@ export async function syncPhotos(force = false): Promise<SyncResult> {
       }
     }
     
-    const summary = `Created: ${createdCount}, Updated: ${updatedCount}, Skipped: ${skippedCount}, Errors: ${errorCount}`;
+    // Delete photos that exist in database but not in Drive
+    console.log('Checking for photos to delete...');
+    for (const dbPhotoId of existingPhotoIds) {
+      if (!driveFileIds.has(dbPhotoId)) {
+        try {
+          console.log(`Deleting photo no longer in Drive: ${dbPhotoId}`);
+          await deletePhoto(dbPhotoId);
+          deletedCount++;
+          console.log(`✓ Deleted photo: ${dbPhotoId}`);
+        } catch (error) {
+          errorCount++;
+          console.error(`✗ Error deleting photo ${dbPhotoId}:`, error);
+        }
+      }
+    }
+    
+    const summary = `Created: ${createdCount}, Updated: ${updatedCount}, Skipped: ${skippedCount}, Deleted: ${deletedCount}, Errors: ${errorCount}`;
     console.log(`Photo sync complete - ${summary}`);
 
     // Revalidate the media page
@@ -287,6 +308,7 @@ export async function syncPhotos(force = false): Promise<SyncResult> {
         created: createdCount,
         updated: updatedCount,
         skipped: skippedCount,
+        deleted: deletedCount,
         errors: errorCount,
       },
     };

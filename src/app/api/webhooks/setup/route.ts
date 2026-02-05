@@ -19,12 +19,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Get the base URL from the request or environment
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 
-                    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` :
-                    request.headers.get('origin') || 
-                    'http://localhost:3000';
+    // ALWAYS use the production domain for webhooks
+    const baseUrl = 'https://kelso-kelly-site.vercel.app';
     
     console.log('Setting up webhooks for base URL:', baseUrl);
+    console.log('NEXT_PUBLIC_SITE_URL env:', process.env.NEXT_PUBLIC_SITE_URL);
+    console.log('VERCEL_URL env:', process.env.VERCEL_URL);
     
     const results = await initializeWebhooks(baseUrl);
     

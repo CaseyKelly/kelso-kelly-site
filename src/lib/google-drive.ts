@@ -7,15 +7,29 @@ function getDriveClient() {
     throw new Error('Google service account credentials not configured');
   }
 
-  const auth = new google.auth.GoogleAuth({
-    credentials: {
-      client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-    },
-    scopes: ['https://www.googleapis.com/auth/drive.readonly'],
-  });
+  console.log('Initializing Google Drive client...');
+  console.log('Service account email:', process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL);
 
-  return google.drive({ version: 'v3', auth });
+  try {
+    const auth = new google.auth.GoogleAuth({
+      credentials: {
+        client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+        private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      },
+      scopes: ['https://www.googleapis.com/auth/drive.readonly'],
+    });
+
+    const drive = google.drive({ 
+      version: 'v3', 
+      auth,
+    });
+
+    console.log('Google Drive client initialized successfully');
+    return drive;
+  } catch (error) {
+    console.error('Failed to initialize Google Drive client:', error);
+    throw error;
+  }
 }
 
 export interface DriveFile {

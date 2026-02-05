@@ -173,7 +173,16 @@ export async function syncPhotos(force = false): Promise<SyncResult> {
     console.log('Folder ID:', folderId);
 
     // List all image files in the main folder
-    const files = await listImageFilesInFolder(folderId);
+    let files;
+    try {
+      const fetchStartTime = Date.now();
+      files = await listImageFilesInFolder(folderId);
+      const fetchDuration = Date.now() - fetchStartTime;
+      console.log(`Fetched ${files.length} files from Drive in ${fetchDuration}ms`);
+    } catch (error) {
+      console.error('Failed to fetch images from Google Drive:', error);
+      throw new Error(`Drive API error: ${error}`);
+    }
 
     console.log(`Found ${files.length} images in Drive folder`);
     console.log('Files:', files.map(f => ({ id: f.id, name: f.name })));

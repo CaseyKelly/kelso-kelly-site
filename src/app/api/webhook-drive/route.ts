@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { syncPhotos } from '@/lib/sync';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // Allow up to 60 seconds for photo sync to complete
 
 /**
  * POST /api/webhook-drive
@@ -32,18 +33,40 @@ export async function POST(request: NextRequest) {
     // Change notification - trigger photo sync
     if (resourceState === 'change' || resourceState === 'update' || resourceState === 'exists') {
       console.log('Drive folder changed, triggering photo sync...');
+      console.log('Webhook will wait for sync to complete before responding');
 
-      // Trigger sync asynchronously with force=true to bypass throttling
-      syncPhotos(true)
-        .then(result => {
-          console.log('Photo sync completed:', result);
-        })
-        .catch(error => {
-          console.error('Photo sync failed:', error);
-        });
-
-      // Acknowledge immediately
-      return NextResponse.json({ received: true, syncing: true });
+      try {
+        // Wait for sync to complete before responding (force=true bypasses throttling)
+        const syncStartTime = Date.now();
+        const result = await syncPhotos(true);
+        const syncDuration = Date.now() - syncStartTime;
+        
+        console.log(`Photo sync completed in ${syncDuration}ms:`, result);
+        
+        if (result.success) {
+          return NextResponse.json({ 
+            received: true, 
+            synced: true,
+            result: result.message,
+            details: result.details,
+            duration: syncDuration
+          });
+        } else {
+          console.error('Photo sync failed:', result.message);
+          return NextResponse.json({ 
+            received: true, 
+            synced: false,
+            error: result.message 
+          }, { status: 200 }); // Still return 200 to prevent Google retries
+        }
+      } catch (error) {
+        console.error('Photo sync threw an error:', error);
+        return NextResponse.json({ 
+          received: true, 
+          synced: false,
+          error: `Sync failed: ${error}` 
+        }, { status: 200 }); // Still return 200 to prevent Google retries
+      }
     }
     
     return NextResponse.json({ received: true });

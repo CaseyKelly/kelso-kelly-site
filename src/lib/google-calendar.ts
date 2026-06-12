@@ -246,7 +246,13 @@ export async function stopWatchingCalendar(channelId: string, resourceId: string
         resourceId: resourceId,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
+    // If the channel is already gone (404), that's fine - just log and continue
+    if (error?.status === 404 || error?.code === 404) {
+      console.log(`Calendar channel '${channelId}' already expired/deleted, continuing...`);
+      return;
+    }
+    
     console.error('Error stopping calendar watch:', error);
     throw new Error(`Failed to stop calendar watch: ${error}`);
   }

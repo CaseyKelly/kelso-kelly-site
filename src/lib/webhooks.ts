@@ -85,19 +85,26 @@ export async function renewWebhooks(baseUrl: string) {
       try {
         console.log(`Renewing ${channel.resource_type} webhook...`);
         
-        // Stop old webhook
-        if (channel.resource_type === 'calendar') {
-          await stopWatchingCalendar(channel.channel_id, channel.resource_id);
-          // Set up new one
-          await setupCalendarWebhook(`${baseUrl}/api/webhook-calendar`);
-        } else if (channel.resource_type === 'drive') {
-          await stopWatchingFolder(channel.channel_id, channel.resource_id);
-          // Set up new one
-          await setupDriveWebhook(`${baseUrl}/api/webhook-drive`);
+        // Stop old webhook (handles 404 gracefully if already expired)
+        try {
+          if (channel.resource_type === 'calendar') {
+            await stopWatchingCalendar(channel.channel_id, channel.resource_id);
+          } else if (channel.resource_type === 'drive') {
+            await stopWatchingFolder(channel.channel_id, channel.resource_id);
+          }
+        } catch (stopError) {
+          console.warn(`Warning: Could not stop old ${channel.resource_type} channel, continuing with renewal...`, stopError);
         }
         
-        // Delete old channel from database
+        // Delete old channel from database (even if stop failed)
         await deleteWebhookChannel(channel.channel_id);
+        
+        // Set up new webhook
+        if (channel.resource_type === 'calendar') {
+          await setupCalendarWebhook(`${baseUrl}/api/webhook-calendar`);
+        } else if (channel.resource_type === 'drive') {
+          await setupDriveWebhook(`${baseUrl}/api/webhook-drive`);
+        }
         
         results.renewed.push(channel.channel_id);
         console.log(`Successfully renewed ${channel.resource_type} webhook`);

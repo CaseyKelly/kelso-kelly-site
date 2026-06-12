@@ -242,7 +242,13 @@ export async function stopWatchingFolder(channelId: string, resourceId: string) 
         resourceId: resourceId,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
+    // If the channel is already gone (404), that's fine - just log and continue
+    if (error?.status === 404 || error?.code === 404) {
+      console.log(`Drive channel '${channelId}' already expired/deleted, continuing...`);
+      return;
+    }
+    
     console.error('Error stopping Drive watch:', error);
     throw new Error(`Failed to stop Drive watch: ${error}`);
   }

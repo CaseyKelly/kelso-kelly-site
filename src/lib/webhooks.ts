@@ -85,22 +85,35 @@ export async function renewWebhooks(baseUrl: string) {
       try {
         console.log(`Renewing ${channel.resource_type} webhook...`);
         
-        // Stop old webhook
-        if (channel.resource_type === 'calendar') {
-          await stopWatchingCalendar(channel.channel_id, channel.resource_id);
-          // Set up new one
-          await setupCalendarWebhook(`${baseUrl}/api/webhook-calendar`);
-        } else if (channel.resource_type === 'drive') {
-          await stopWatchingFolder(channel.channel_id, channel.resource_id);
-          // Set up new one
-          await setupDriveWebhook(`${baseUrl}/api/webhook-drive`);
+        // Stop old webhook (handles 404 gracefully if already expired)
+        try {
+          if (channel.resource_type === 'calendar') {
+            await stopWatchingCalendar(channel.channel_id, channel.resource_id);
+          } else if (channel.resource_type === 'drive') {
+            await stopWatchingFolder(channel.channel_id, channel.resource_id);
+          }
+        } catch (stopError) {
+          console.warn(`Warning: Could not stop old ${channel.resource_type} channel, continuing with renewal...`, stopError);
         }
         
-        // Delete old channel from database
+        // Set up new webhook FIRST (before deleting old record)
+        // This ensures if setup fails, the old record exists for retry on next cron run
+        let newChannelId: string;
+        if (channel.resource_type === 'calendar') {
+          const result = await setupCalendarWebhook(`${baseUrl}/api/webhook-calendar`);
+          newChannelId = result.channelId;
+        } else if (channel.resource_type === 'drive') {
+          const result = await setupDriveWebhook(`${baseUrl}/api/webhook-drive`);
+          newChannelId = result.channelId;
+        } else {
+          throw new Error(`Unknown webhook resource type: ${channel.resource_type}`);
+        }
+        
+        // Now that new webhook is created, delete old channel from database
         await deleteWebhookChannel(channel.channel_id);
         
         results.renewed.push(channel.channel_id);
-        console.log(`Successfully renewed ${channel.resource_type} webhook`);
+        console.log(`Successfully renewed ${channel.resource_type} webhook (${channel.channel_id} -> ${newChannelId})`);
       } catch (error) {
         console.error(`Failed to renew ${channel.resource_type} webhook:`, error);
         results.failed.push(channel.channel_id);

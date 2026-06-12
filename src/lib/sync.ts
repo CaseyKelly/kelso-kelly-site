@@ -15,6 +15,7 @@ import {
   upsertVideo,
   deleteVideo,
   deletePhoto,
+  deleteEvent,
   deleteAllVideos,
   logSync,
   getEvents,
@@ -65,6 +66,7 @@ export async function syncCalendarEvents(force = false): Promise<SyncResult> {
     let createdCount = 0;
     let updatedCount = 0;
     let unchangedCount = 0;
+    let deletedCount = 0;
     
     for (const event of calendarEvents) {
       const result = await upsertEvent({
@@ -89,17 +91,40 @@ export async function syncCalendarEvents(force = false): Promise<SyncResult> {
       }
     }
     
-    // Note: We're not auto-deleting events that were removed from calendar
-    // This is intentional to preserve historical data
-    // If you want to delete removed events, uncomment the code below:
-    /*
+    // Delete events that were removed from calendar with safety guard
     const deletedEventIds = [...existingEventIds].filter(id => !calendarEventIds.has(id));
-    for (const eventId of deletedEventIds) {
-      await deleteEvent(eventId);
-    }
-    */
+    let deletionSkipped = false;
     
-    const summary = `Created: ${createdCount}, Updated: ${updatedCount}, Unchanged: ${unchangedCount}`;
+    if (deletedEventIds.length > 0) {
+      const deletionPercentage = (deletedEventIds.length / existingEventIds.size) * 100;
+      const percentageThreshold = 20; // Warn if >20% of events would be deleted
+      const minimumCountThreshold = 5; // Only guard if ≥5 events AND >20%
+      
+      // Hybrid threshold: protect against bulk deletions (high count + high percentage)
+      // Allow small cleanups even if percentage is high (e.g., 1 of 1 event = 100%)
+      const shouldGuard = deletedEventIds.length >= minimumCountThreshold && 
+                          deletionPercentage > percentageThreshold;
+      
+      if (shouldGuard) {
+        console.warn(
+          `⚠️  Deletion safety threshold exceeded: ${deletedEventIds.length} events (${deletionPercentage.toFixed(1)}%) ` +
+          `would be deleted. This might indicate a sync or pagination issue. Skipping deletion to prevent data loss.`
+        );
+        deletionSkipped = true;
+      } else {
+        // Safe to delete
+        for (const eventId of deletedEventIds) {
+          await deleteEvent(eventId);
+          deletedCount++;
+          console.log(`✓ Deleted event: ${eventId}`);
+        }
+      }
+    }
+    
+    let summary = `Created: ${createdCount}, Updated: ${updatedCount}, Unchanged: ${unchangedCount}, Deleted: ${deletedCount}`;
+    if (deletionSkipped) {
+      summary += ` (${deletedEventIds.length} deletions skipped - safety threshold)`;
+    }
     console.log(`Calendar sync complete - ${summary}`);
 
     // Revalidate the schedule page
@@ -119,6 +144,7 @@ export async function syncCalendarEvents(force = false): Promise<SyncResult> {
         created: createdCount,
         updated: updatedCount,
         unchanged: unchangedCount,
+        deleted: deletedCount,
       },
     };
   } catch (error) {

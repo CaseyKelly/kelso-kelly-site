@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { syncCalendarEvents } from '@/lib/sync';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // Allow up to 60 seconds for calendar sync to complete
 
 /**
  * POST /api/webhook-calendar
@@ -32,18 +33,40 @@ export async function POST(request: NextRequest) {
     // Actual change notification - trigger sync
     if (resourceState === 'exists' || resourceState === 'not_exists') {
       console.log('Calendar changed, triggering sync...');
+      console.log('Webhook will wait for sync to complete before responding');
 
-      // Trigger sync asynchronously with force=true to bypass throttling
-      syncCalendarEvents(true)
-        .then(result => {
-          console.log('Calendar sync completed:', result);
-        })
-        .catch(error => {
-          console.error('Calendar sync failed:', error);
-        });
-
-      // Acknowledge immediately
-      return NextResponse.json({ received: true, syncing: true });
+      try {
+        // Wait for sync to complete before responding (force=true bypasses throttling)
+        const syncStartTime = Date.now();
+        const result = await syncCalendarEvents(true);
+        const syncDuration = Date.now() - syncStartTime;
+        
+        console.log(`Calendar sync completed in ${syncDuration}ms:`, result);
+        
+        if (result.success) {
+          return NextResponse.json({ 
+            received: true, 
+            synced: true,
+            result: result.message,
+            details: result.details,
+            duration: syncDuration
+          });
+        } else {
+          console.error('Calendar sync failed:', result.message);
+          return NextResponse.json({ 
+            received: true, 
+            synced: false,
+            error: result.message 
+          }, { status: 200 }); // Still return 200 to prevent Google retries
+        }
+      } catch (error) {
+        console.error('Calendar sync threw an error:', error);
+        return NextResponse.json({ 
+          received: true, 
+          synced: false,
+          error: `Sync failed: ${error}` 
+        }, { status: 200 }); // Still return 200 to prevent Google retries
+      }
     }
     
     return NextResponse.json({ received: true });

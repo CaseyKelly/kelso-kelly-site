@@ -7,7 +7,7 @@ import {
   findFolderByName
 } from './google-drive';
 import { fetchVideosFromSheetWithThumbnails } from './google-sheets';
-import { optimizeImage } from './image-optimizer';
+import { optimizeImage, isHeicFile, UnsupportedFormatError } from './image-optimizer';
 import {
   sql,
   upsertEvent,
@@ -194,6 +194,7 @@ export async function syncPhotos(force = false): Promise<SyncResult> {
     let skippedCount = 0;
     let deletedCount = 0;
     let errorCount = 0;
+    let heicSkippedCount = 0;
 
     console.log('Fetching images from Google Drive...');
     console.log('Folder ID:', folderId);
@@ -258,17 +259,27 @@ export async function syncPhotos(force = false): Promise<SyncResult> {
           continue;
         }
         
+        // Check if this is a HEIC file (unsupported format)
+        if (isHeicFile(file.name, file.mimeType)) {
+          console.log(`⚠️  Skipping HEIC file (unsupported format): ${file.name}`);
+          heicSkippedCount++;
+          continue;
+        }
+        
         // New photo - download, optimize, and upload
         console.log(`Processing new photo: ${file.name}...`);
         
         // Download the image
         const imageBuffer = await downloadFile(file.id);
         
-        // Optimize the image
+        // Optimize the image (with metadata for better error messages)
         const optimized = await optimizeImage(imageBuffer, {
           maxWidth: 1920,
           quality: 85,
           format: 'webp',
+        }, {
+          filename: file.name,
+          mimeType: file.mimeType,
         });
         
         // Upload to Vercel Blob Storage
@@ -302,9 +313,16 @@ export async function syncPhotos(force = false): Promise<SyncResult> {
           console.log(`✓ Updated photo: ${file.name}`);
         }
       } catch (error) {
-        errorCount++;
-        console.error(`✗ Error processing ${file.name}:`, error);
-        // Continue with next file
+        // Categorize errors: unsupported formats vs actual processing errors
+        if (error instanceof UnsupportedFormatError) {
+          console.warn(`⚠️  Unsupported format, skipping ${file.name}:`, error.message);
+          heicSkippedCount++;
+          // Don't increment errorCount - this is expected behavior for unsupported formats
+        } else {
+          errorCount++;
+          console.error(`✗ Error processing ${file.name}:`, error);
+        }
+        // Continue with next file regardless
       }
     }
     
@@ -324,8 +342,26 @@ export async function syncPhotos(force = false): Promise<SyncResult> {
       }
     }
     
-    const summary = `Created: ${createdCount}, Updated: ${updatedCount}, Skipped: ${skippedCount}, Deleted: ${deletedCount}, Errors: ${errorCount}`;
+    // Build detailed summary message
+    const summaryParts = [
+      `Created: ${createdCount}`,
+      `Updated: ${updatedCount}`,
+      `Skipped: ${skippedCount}`,
+      `Deleted: ${deletedCount}`,
+      `Errors: ${errorCount}`,
+    ];
+
+    if (heicSkippedCount > 0) {
+      summaryParts.push(`HEIC Skipped: ${heicSkippedCount}`);
+    }
+
+    const summary = summaryParts.join(', ');
     console.log(`Photo sync complete - ${summary}`);
+
+    // Add helpful message if HEIC files were skipped
+    if (heicSkippedCount > 0) {
+      console.log(`ℹ️  Note: ${heicSkippedCount} HEIC file(s) were skipped. HEIC format is not supported. Please convert to JPEG or PNG before uploading.`);
+    }
 
     // Revalidate the media page
     revalidatePath('/media');
@@ -337,7 +373,7 @@ export async function syncPhotos(force = false): Promise<SyncResult> {
     });
 
     return {
-      success: errorCount === 0,
+      success: errorCount === 0, // Only fail on actual errors, not unsupported formats
       message: `Photo sync complete - ${summary}`,
       details: {
         created: createdCount,
@@ -345,6 +381,7 @@ export async function syncPhotos(force = false): Promise<SyncResult> {
         skipped: skippedCount,
         deleted: deletedCount,
         errors: errorCount,
+        heicSkipped: heicSkippedCount,
       },
     };
   } catch (error) {

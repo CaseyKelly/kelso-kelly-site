@@ -16,6 +16,41 @@ export interface ImageOptimizationOptions {
 }
 
 /**
+ * Error thrown when an image format is not supported by Sharp
+ */
+export class UnsupportedFormatError extends Error {
+  constructor(format: string, originalError?: Error) {
+    super(`Unsupported image format: ${format}`);
+    this.name = 'UnsupportedFormatError';
+    this.cause = originalError;
+  }
+}
+
+/**
+ * Error thrown when image processing fails for reasons other than unsupported format
+ */
+export class ImageProcessingError extends Error {
+  constructor(message: string, originalError?: Error) {
+    super(message);
+    this.name = 'ImageProcessingError';
+    this.cause = originalError;
+  }
+}
+
+/**
+ * Check if a file is HEIC/HEIF format based on filename and MIME type
+ * HEIC files are not fully supported by Sharp in Vercel environments
+ */
+export function isHeicFile(filename: string, mimeType?: string): boolean {
+  const ext = filename.toLowerCase();
+  return ext.endsWith('.heic') || 
+         ext.endsWith('.heif') || 
+         mimeType?.toLowerCase().includes('heif') || 
+         mimeType?.toLowerCase().includes('heic') ||
+         false;
+}
+
+/**
  * Optimize an image using Sharp
  * - Resize to max dimensions
  * - Convert to WebP format (best compression)
@@ -23,10 +58,12 @@ export interface ImageOptimizationOptions {
  * 
  * @param inputBuffer The input image buffer
  * @param options Optimization options
+ * @param metadata Optional metadata about the file (for better error messages)
  */
 export async function optimizeImage(
   inputBuffer: Buffer,
-  options: ImageOptimizationOptions = {}
+  options: ImageOptimizationOptions = {},
+  metadata?: { filename?: string; mimeType?: string }
 ): Promise<OptimizedImage> {
   const {
     maxWidth = 1920,
@@ -74,7 +111,16 @@ export async function optimizeImage(
     };
   } catch (error) {
     console.error('Error optimizing image:', error);
-    throw new Error(`Failed to optimize image: ${error}`);
+    
+    // Check if this is a HEIC/HEIF format error (libheif not available)
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (errorMessage.includes('heif') || errorMessage.includes('HEIF')) {
+      const format = metadata?.filename ? 
+        metadata.filename.split('.').pop()?.toUpperCase() || 'HEIC/HEIF' : 'HEIC/HEIF';
+      throw new UnsupportedFormatError(format, error as Error);
+    }
+    
+    throw new ImageProcessingError(`Failed to optimize image: ${error}`, error as Error);
   }
 }
 

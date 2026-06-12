@@ -158,6 +158,7 @@ export async function fetchCalendarEvents(
 
 /**
  * Fetch all events (past and future) from Google Calendar
+ * Implements pagination to fetch all events, not just the first 100
  */
 export async function fetchAllCalendarEvents(maxResults = 100): Promise<CalendarEvent[]> {
   if (!process.env.GOOGLE_CALENDAR_ID) {
@@ -165,32 +166,50 @@ export async function fetchAllCalendarEvents(maxResults = 100): Promise<Calendar
   }
 
   const calendar = getCalendarClient();
+  const allEvents: CalendarEvent[] = [];
+  let pageToken: string | undefined;
+  let pageCount = 0;
   
   try {
-    const response = await calendar.events.list({
-      calendarId: process.env.GOOGLE_CALENDAR_ID,
-      maxResults,
-      singleEvents: true,
-      orderBy: 'startTime',
-    });
+    do {
+      pageCount++;
+      const response = await calendar.events.list({
+        calendarId: process.env.GOOGLE_CALENDAR_ID,
+        maxResults,
+        pageToken,
+        singleEvents: true,
+        orderBy: 'startTime',
+      });
 
-    const events = response.data.items || [];
-    
-    return events.map(event => {
-      const location = parseLocation(event.location);
-      const { description, ticketUrl } = parseDescription(event.description);
+      const events = response.data.items || [];
       
-      return {
-        id: event.id!,
-        title: event.summary || 'Untitled Event',
-        date: formatDate(event.start?.dateTime, event.start?.date),
-        time: formatTime(event.start?.dateTime, event.start?.date),
-        venue: location.venue,
-        address: location.address,
-        description,
-        ticketUrl,
-      };
-    });
+      const pageEvents = events.map(event => {
+        const location = parseLocation(event.location);
+        const { description, ticketUrl } = parseDescription(event.description);
+        
+        return {
+          id: event.id!,
+          title: event.summary || 'Untitled Event',
+          date: formatDate(event.start?.dateTime, event.start?.date),
+          time: formatTime(event.start?.dateTime, event.start?.date),
+          venue: location.venue,
+          address: location.address,
+          description,
+          ticketUrl,
+        };
+      });
+      
+      allEvents.push(...pageEvents);
+      
+      // Get next page token, will be undefined if this is the last page
+      pageToken = response.data.nextPageToken ?? undefined;
+    } while (pageToken);
+    
+    if (pageCount > 1) {
+      console.log(`Fetched calendar events across ${pageCount} pages (total: ${allEvents.length} events)`);
+    }
+    
+    return allEvents;
   } catch (error) {
     console.error('Error fetching all calendar events:', error);
     throw new Error(`Failed to fetch calendar events: ${error}`);

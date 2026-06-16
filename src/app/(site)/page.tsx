@@ -4,6 +4,7 @@ import { Calendar, Music2, Mail, MapPin, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
+import { ParallaxHeroImage } from "@/components/ui/ParallaxHeroImage";
 import { siteConfig } from "@/data/site-config";
 import { getUpcomingEvents, getVideos } from "@/lib/db";
 import { formatDate } from "@/lib/utils";
@@ -67,20 +68,10 @@ export default async function HomePage() {
       {/* Hero Section with Background Image */}
       <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
         {/* Background Image with Parallax Effect */}
-        <div className="absolute inset-0">
-          <Image
-            src="/images/kelso-performing-optimized.webp"
-            alt="Kelso Kelly performing live"
-            fill
-            className="object-cover object-[center_10%] hero-image"
-            priority
-            quality={90}
-          />
-          {/* Dark overlay for text readability */}
-          <div className="absolute inset-0 bg-gradient-to-b from-zinc-950/80 via-zinc-950/70 to-zinc-950" />
-          {/* Vignette effect */}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.4)_100%)]" />
-        </div>
+        <ParallaxHeroImage 
+          src="/images/kelso-performing-optimized.webp"
+          alt="Kelso Kelly performing live"
+        />
         
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 text-center">
             <div className="animate-fade-in">

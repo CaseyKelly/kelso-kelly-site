@@ -16,9 +16,13 @@ export async function POST(request: NextRequest) {
     //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     // }
 
-    console.log('Manual video sync triggered');
+    // Check for force parameter in query string
+    const { searchParams } = new URL(request.url);
+    const force = searchParams.get('force') === 'true';
+
+    console.log('Manual video sync triggered', force ? '(forced)' : '');
     
-    const result = await syncVideos();
+    const result = await syncVideos(force);
     
     return NextResponse.json(result, {
       status: result.success ? 200 : 500,

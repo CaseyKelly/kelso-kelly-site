@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { renewWebhooks } from '@/lib/webhooks';
 import { cleanupOldSyncLogs, getWebhookChannels, deleteWebhookChannel } from '@/lib/db';
 import { sendWebhookAlert } from '@/lib/notifications';
+import { stopWatchingCalendar } from '@/lib/google-calendar';
+import { stopWatchingFolder } from '@/lib/google-drive';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,10 +45,33 @@ export async function GET(request: NextRequest) {
     // Clean up duplicates
     if (duplicatesToDelete.length > 0) {
       console.log(`Found ${duplicatesToDelete.length} duplicate webhooks, cleaning up...`);
+      
       for (const channelId of duplicatesToDelete) {
         try {
+          // Find the full channel record to get resource_type and resource_id
+          const duplicateChannel = channels.find(c => c.channel_id === channelId);
+          
+          if (!duplicateChannel) {
+            console.warn(`Channel ${channelId} not found in list, skipping stop`);
+          } else {
+            // Stop the webhook on Google's side FIRST
+            try {
+              if (duplicateChannel.resource_type === 'calendar') {
+                await stopWatchingCalendar(duplicateChannel.channel_id, duplicateChannel.resource_id);
+                console.log(`Stopped duplicate calendar channel: ${channelId}`);
+              } else if (duplicateChannel.resource_type === 'drive') {
+                await stopWatchingFolder(duplicateChannel.channel_id, duplicateChannel.resource_id);
+                console.log(`Stopped duplicate drive channel: ${channelId}`);
+              }
+            } catch (stopError) {
+              // Channel might already be expired (404), that's OK
+              console.warn(`Could not stop channel ${channelId}:`, stopError);
+            }
+          }
+          
+          // Delete from database even if stop failed
           await deleteWebhookChannel(channelId);
-          console.log(`Deleted duplicate channel: ${channelId}`);
+          console.log(`Deleted duplicate channel from DB: ${channelId}`);
         } catch (error) {
           console.error(`Failed to delete duplicate ${channelId}:`, error);
         }

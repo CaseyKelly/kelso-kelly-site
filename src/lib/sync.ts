@@ -237,7 +237,7 @@ export async function syncPhotos(force = false): Promise<SyncResult> {
           }
 
           const title = cleanFilenameForTitle(file.name);
-          const altText = `${title} - Kelso Kelly`;
+          const altText = title;
 
           const result = await upsertPhoto({
             google_drive_id: file.id,
@@ -291,7 +291,7 @@ export async function syncPhotos(force = false): Promise<SyncResult> {
         
         // Generate title and alt text from filename
         const title = cleanFilenameForTitle(file.name);
-        const altText = `${title} - Kelso Kelly`;
+        const altText = title;
         
         // Save to database
         const result = await upsertPhoto({

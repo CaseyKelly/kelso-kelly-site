@@ -85,7 +85,7 @@ export async function listImageFilesInFolder(folderId: string): Promise<DriveFil
     const response = await drive.files.list({
       q: query,
       fields: 'files(id, name, mimeType, createdTime, modifiedTime, size)',
-      orderBy: 'createdTime desc',
+      orderBy: 'modifiedTime desc',
       pageSize: 1000,
     });
 

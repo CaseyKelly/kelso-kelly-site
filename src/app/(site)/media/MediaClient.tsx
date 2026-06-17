@@ -226,7 +226,6 @@ export default function MediaClient({
                   className="object-contain rounded-xl"
                 />
               </div>
-              <p className="text-center text-zinc-400 mt-4">{selectedPhoto.alt_text || selectedPhoto.title}</p>
             </div>
           </div>
         )}

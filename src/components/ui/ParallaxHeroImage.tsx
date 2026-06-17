@@ -49,9 +49,9 @@ export function ParallaxHeroImage({ src, alt }: ParallaxHeroImageProps) {
         />
       </div>
       {/* Dark overlay for text readability */}
-      <div className="absolute inset-0 bg-gradient-to-b from-zinc-950/80 via-zinc-950/70 to-zinc-950" />
+      <div className="absolute inset-0 bg-gradient-to-b from-zinc-950/50 via-zinc-950/40 to-zinc-950/70" />
       {/* Vignette effect */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.4)_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.2)_100%)]" />
     </div>
   )
 }

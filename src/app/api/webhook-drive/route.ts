@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { syncPhotos } from '@/lib/sync';
+import { sendWebhookAlert } from '@/lib/notifications';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // Allow up to 60 seconds for photo sync to complete
@@ -53,6 +54,18 @@ export async function POST(request: NextRequest) {
           });
         } else {
           console.error('Photo sync failed:', result.message);
+          
+          // Send email alert about sync failure
+          await sendWebhookAlert({
+            type: 'renewal_failed',
+            message: 'Drive webhook triggered but photo sync failed',
+            details: { 
+              error: result.message,
+              details: result.details,
+              duration: syncDuration 
+            },
+          });
+          
           return NextResponse.json({ 
             received: true, 
             synced: false,
@@ -61,6 +74,14 @@ export async function POST(request: NextRequest) {
         }
       } catch (error) {
         console.error('Photo sync threw an error:', error);
+        
+        // Send email alert about sync error
+        await sendWebhookAlert({
+          type: 'renewal_failed',
+          message: 'Drive webhook triggered but photo sync threw an error',
+          details: { error: String(error) },
+        });
+        
         return NextResponse.json({ 
           received: true, 
           synced: false,

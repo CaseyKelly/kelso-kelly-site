@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { renewWebhooks } from '@/lib/webhooks';
-import { cleanupOldSyncLogs } from '@/lib/db';
+import { cleanupOldSyncLogs, getWebhookChannels, deleteWebhookChannel } from '@/lib/db';
+import { sendWebhookAlert } from '@/lib/notifications';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,10 +20,48 @@ export async function GET(request: NextRequest) {
 
     console.log('Running webhook renewal cron job...');
 
-    // Get the base URL
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ||
-                    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` :
-                    'http://localhost:3000';
+    // Detect and cleanup duplicates FIRST
+    const channels = await getWebhookChannels();
+    const channelsByType = new Map<string, typeof channels[0]>();
+    const duplicatesToDelete: string[] = [];
+
+    for (const channel of channels) {
+      const existing = channelsByType.get(channel.resource_type);
+      if (existing) {
+        // Found duplicate - keep the one with later expiration
+        if (channel.expiration > existing.expiration) {
+          duplicatesToDelete.push(existing.channel_id);
+          channelsByType.set(channel.resource_type, channel);
+        } else {
+          duplicatesToDelete.push(channel.channel_id);
+        }
+      } else {
+        channelsByType.set(channel.resource_type, channel);
+      }
+    }
+
+    // Clean up duplicates
+    if (duplicatesToDelete.length > 0) {
+      console.log(`Found ${duplicatesToDelete.length} duplicate webhooks, cleaning up...`);
+      for (const channelId of duplicatesToDelete) {
+        try {
+          await deleteWebhookChannel(channelId);
+          console.log(`Deleted duplicate channel: ${channelId}`);
+        } catch (error) {
+          console.error(`Failed to delete duplicate ${channelId}:`, error);
+        }
+      }
+      
+      // Send alert about duplicates
+      await sendWebhookAlert({
+        type: 'duplicate_detected',
+        message: `Detected and cleaned ${duplicatesToDelete.length} duplicate webhook channels`,
+        details: { channels: duplicatesToDelete },
+      });
+    }
+
+    // Get the base URL - use production domain consistently
+    const baseUrl = 'https://kelso-kelly-site.vercel.app';
 
     const results = await renewWebhooks(baseUrl);
 
@@ -36,8 +75,9 @@ export async function GET(request: NextRequest) {
       success: true,
       renewed: results.renewed,
       failed: results.failed,
+      duplicatesCleaned: duplicatesToDelete.length,
       syncLogsDeleted: deletedCount,
-      message: `Renewed ${results.renewed.length} webhooks, ${results.failed.length} failed, cleaned up ${deletedCount} old sync logs`,
+      message: `Renewed ${results.renewed.length} webhooks, ${results.failed.length} failed, ${duplicatesToDelete.length} duplicates cleaned, ${deletedCount} old sync logs removed`,
     });
   } catch (error) {
     console.error('Error in webhook renewal cron:', error);

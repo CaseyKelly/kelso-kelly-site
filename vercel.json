@@ -5,6 +5,10 @@
       "schedule": "0 0 * * *"
     },
     {
+      "path": "/api/cron/renew-drive-webhooks",
+      "schedule": "0 */12 * * *"
+    },
+    {
       "path": "/api/sync-calendar",
       "schedule": "0 */2 * * *"
     },

@@ -408,15 +408,24 @@ export async function upsertWebhookChannel(channel: {
   resource_type: 'calendar' | 'drive';
   resource_id: string;
   expiration: number;
+  webhook_url?: string;
 }) {
+  const webhookUrl = channel.webhook_url || 
+    (channel.resource_type === 'calendar' 
+      ? 'https://kelso-kelly-site.vercel.app/api/webhook-calendar'
+      : 'https://kelso-kelly-site.vercel.app/api/webhook-drive');
+
   return sql`
-    INSERT INTO webhook_channels (channel_id, resource_type, resource_id, expiration)
-    VALUES (${channel.channel_id}, ${channel.resource_type}, ${channel.resource_id}, ${channel.expiration})
+    INSERT INTO webhook_channels (channel_id, resource_type, resource_id, expiration, webhook_url, last_renewed_at, renewal_failures)
+    VALUES (${channel.channel_id}, ${channel.resource_type}, ${channel.resource_id}, ${channel.expiration}, ${webhookUrl}, NOW(), 0)
     ON CONFLICT (channel_id)
     DO UPDATE SET
       resource_type = EXCLUDED.resource_type,
       resource_id = EXCLUDED.resource_id,
-      expiration = EXCLUDED.expiration
+      expiration = EXCLUDED.expiration,
+      webhook_url = EXCLUDED.webhook_url,
+      last_renewed_at = NOW(),
+      renewal_failures = 0
     RETURNING *
   `;
 }

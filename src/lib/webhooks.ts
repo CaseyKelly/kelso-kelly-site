@@ -66,6 +66,7 @@ export async function setupDriveWebhook(webhookUrl: string) {
 /**
  * Renew all webhooks that are expiring soon
  * Should be called by a cron job
+ * Skips Drive webhooks as they have a dedicated renewal cron
  */
 export async function renewWebhooks(baseUrl: string) {
   const channels = await getWebhookChannels();
@@ -78,6 +79,12 @@ export async function renewWebhooks(baseUrl: string) {
   };
   
   for (const channel of channels) {
+    // Skip Drive webhooks - they're handled by dedicated cron every 12 hours
+    if (channel.resource_type === 'drive') {
+      console.log(`Skipping Drive webhook ${channel.channel_id} (handled by dedicated cron)`);
+      continue;
+    }
+    
     const timeUntilExpiration = channel.expiration - now;
     
     // If expiring within threshold, renew
@@ -125,12 +132,52 @@ export async function renewWebhooks(baseUrl: string) {
 }
 
 /**
+ * Clean up ALL existing webhooks
+ * Stops watching all channels and removes them from the database
+ */
+export async function cleanupAllWebhooks() {
+  const channels = await getWebhookChannels();
+  const results = { stopped: 0, failed: 0, deleted: 0 };
+  
+  console.log(`Starting cleanup of ${channels.length} webhook channel(s)...`);
+  
+  for (const channel of channels) {
+    try {
+      if (channel.resource_type === 'calendar') {
+        await stopWatchingCalendar(channel.channel_id, channel.resource_id);
+      } else if (channel.resource_type === 'drive') {
+        await stopWatchingFolder(channel.channel_id, channel.resource_id);
+      }
+      results.stopped++;
+      console.log(`Stopped ${channel.resource_type} channel: ${channel.channel_id}`);
+    } catch (error) {
+      console.warn(`Failed to stop channel ${channel.channel_id}:`, error);
+      results.failed++;
+    }
+    
+    // Delete from database even if stop failed (channel might be already expired)
+    await deleteWebhookChannel(channel.channel_id);
+    results.deleted++;
+  }
+  
+  console.log('Cleanup completed:', results);
+  return results;
+}
+
+/**
  * Initialize all webhooks (called once during setup)
+ * Cleans up any existing webhooks first to prevent duplicates
  */
 export async function initializeWebhooks(baseUrl: string) {
+  // Clean up ALL existing webhooks first to prevent duplicates
+  console.log('Cleaning up existing webhooks before setup...');
+  const cleanup = await cleanupAllWebhooks();
+  console.log(`Cleaned up ${cleanup.deleted} existing webhook(s)`);
+  
   const results = {
-    calendar: null as any,
-    drive: null as any,
+    calendar: null as unknown,
+    drive: null as unknown,
+    cleanup,
     errors: [] as string[],
   };
   

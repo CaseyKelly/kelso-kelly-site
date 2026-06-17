@@ -71,6 +71,9 @@ CREATE TABLE IF NOT EXISTS webhook_channels (
   resource_type VARCHAR(50) NOT NULL, -- 'calendar', 'drive'
   resource_id VARCHAR(255) NOT NULL,
   expiration BIGINT NOT NULL, -- Unix timestamp in milliseconds
+  webhook_url TEXT, -- URL where webhook notifications are sent
+  last_renewed_at TIMESTAMP, -- When webhook was last successfully renewed
+  renewal_failures INTEGER DEFAULT 0, -- Count of consecutive renewal failures
   created_at TIMESTAMP DEFAULT NOW()
 );
 

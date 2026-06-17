@@ -58,11 +58,22 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       };
     });
 
+    // Detect duplicates
+    const duplicates = new Map<string, number>();
+    for (const webhook of webhooks) {
+      const count = duplicates.get(webhook.resource_type) || 0;
+      duplicates.set(webhook.resource_type, count + 1);
+    }
+
+    const hasDuplicates = Array.from(duplicates.values()).some(count => count > 1);
+
     const summary = {
       total: webhooks.length,
       active: webhooks.filter(w => w.status === 'active').length,
       expiring_soon: webhooks.filter(w => w.status === 'expiring_soon').length,
       expired: webhooks.filter(w => w.status === 'expired').length,
+      has_duplicates: hasDuplicates,
+      duplicates_by_type: hasDuplicates ? Object.fromEntries(duplicates) : null,
     };
 
     return NextResponse.json({

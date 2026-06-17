@@ -156,8 +156,15 @@ export async function cleanupAllWebhooks() {
     }
     
     // Delete from database even if stop failed (channel might be already expired)
-    await deleteWebhookChannel(channel.channel_id);
-    results.deleted++;
+    try {
+      await deleteWebhookChannel(channel.channel_id);
+      results.deleted++;
+      console.log(`Deleted channel from DB: ${channel.channel_id}`);
+    } catch (dbError) {
+      console.error(`Failed to delete channel ${channel.channel_id} from database:`, dbError);
+      results.failed++;
+      // Continue to next channel - don't let DB errors abort entire cleanup
+    }
   }
   
   console.log('Cleanup completed:', results);

@@ -8,6 +8,6 @@ export const siteConfig: SiteConfig = {
   email: "kelsokelly013@gmail.com",
   genres: ["Pop", "Old-School R&B", "Modern Country"],
   socialLinks: {
-    facebook: "https://facebook.com",
+    facebook: "https://www.facebook.com/kelso.kelly.2025/",
   },
 };

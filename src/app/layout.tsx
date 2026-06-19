@@ -28,6 +28,8 @@ export const metadata: Metadata = {
     "acoustic",
     "entertainment",
     "wedding music",
+    "house parties",
+    "backyard bbqs",
     "corporate events",
     ...siteConfig.genres,
   ],

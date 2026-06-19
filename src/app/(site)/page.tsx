@@ -83,7 +83,7 @@ export default async function HomePage() {
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20 w-full">
           <div className="animate-fade-in max-w-2xl">
             <p className="text-amber-400 text-sm font-medium tracking-[0.2em] uppercase mb-4">
-              Northern Colorado · Est. 1984
+              Northern Colorado Musician
             </p>
 
             <h1 className="animate-fade-in animation-delay-100 font-display font-black text-white drop-shadow-2xl leading-[0.9] mb-6"

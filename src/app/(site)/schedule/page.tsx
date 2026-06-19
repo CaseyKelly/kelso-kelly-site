@@ -1,63 +1,84 @@
 import { Metadata } from "next";
-import { Calendar, MapPin, Clock, ExternalLink } from "lucide-react";
+import { Calendar, MapPin, ExternalLink } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { getUpcomingEvents, getPastEvents } from "@/lib/db";
 import { formatDate } from "@/lib/utils";
 
-export const revalidate = 3600; // 1 hour
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
   title: "Schedule",
   description: "View upcoming shows and performances by Kelso Kelly across Northern Colorado.",
 };
 
+function parseEventDate(dateStr: string): { month: string; day: string } {
+  const date = new Date(dateStr);
+  return {
+    month: date.toLocaleString('en-US', { month: 'short' }).toUpperCase(),
+    day: String(date.getDate()),
+  };
+}
+
 function EventCard({ event, isPast = false }: { event: any; isPast?: boolean }) {
+  const { month, day } = parseEventDate(event.date);
   return (
-    <Card hover={!isPast} className={isPast ? "opacity-60" : ""}>
-      <CardContent className="p-6">
-        {event.time && event.time.toLowerCase() !== 'all day' && (
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
-            <div className="flex items-center gap-1 text-sm text-zinc-500">
-              <Clock className="h-4 w-4" />
-              {event.time}
+    <Card hover={!isPast} className={isPast ? "opacity-50" : ""}>
+      <CardContent className="p-0 flex overflow-hidden">
+        {/* Date block */}
+        <div className="bg-amber-500/10 border-r border-amber-500/15 px-5 py-5 flex flex-col items-center justify-center min-w-[72px] shrink-0">
+          <span className="text-[10px] font-semibold tracking-widest uppercase text-amber-500 mb-1">
+            {month}
+          </span>
+          <span className="font-display text-4xl font-black text-white leading-none">
+            {day}
+          </span>
+        </div>
+
+        {/* Content */}
+        <div className="p-5 flex-1 min-w-0">
+          <h3 className="text-lg font-semibold text-white mb-2 leading-snug">{event.title}</h3>
+
+          <div className="space-y-1.5 mb-3">
+            <div className="flex items-center gap-2 text-zinc-400 text-sm">
+              <Calendar className="h-3.5 w-3.5 flex-shrink-0 text-amber-500/70" />
+              <span>{formatDate(event.date)}</span>
             </div>
-          </div>
-        )}
 
-        <h3 className="text-xl font-semibold text-white mb-3">{event.title}</h3>
-
-        <div className="space-y-3 mb-4">
-          <div className="flex items-center gap-2 text-zinc-400">
-            <Calendar className="h-4 w-4 flex-shrink-0 text-amber-500" />
-            <span>{formatDate(event.date)}</span>
-          </div>
-
-          {event.venue && (
-            <div className="flex items-start gap-2 text-zinc-400">
-              <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 text-amber-500" />
-              <div>
-                <p className="font-medium text-zinc-300">{event.venue}</p>
-                {event.address && <p className="text-sm">{event.address}</p>}
+            {event.venue && (
+              <div className="flex items-start gap-2 text-zinc-400">
+                <MapPin className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-amber-500/70" />
+                <div>
+                  <span className="text-sm font-medium text-zinc-300">{event.venue}</span>
+                  {event.address && <p className="text-sm">{event.address}</p>}
+                </div>
               </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3 flex-wrap">
+            {event.time && event.time.toLowerCase() !== 'all day' && (
+              <span className="inline-block text-[11px] font-medium tracking-wide text-amber-500 bg-amber-500/10 rounded px-2 py-0.5">
+                {event.time}
+              </span>
+            )}
+            {event.description && (
+              <p className="text-zinc-500 text-sm">{event.description}</p>
+            )}
+          </div>
+
+          {event.ticket_url && !isPast && (
+            <div className="mt-3">
+              <a href={event.ticket_url} target="_blank" rel="noopener noreferrer">
+                <Button size="sm" className="gap-2">
+                  Get Tickets
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </Button>
+              </a>
             </div>
           )}
         </div>
-
-        {event.description && (
-          <p className="text-zinc-500 text-sm mb-4">{event.description}</p>
-        )}
-
-        {event.ticket_url && !isPast && (
-          <a href={event.ticket_url} target="_blank" rel="noopener noreferrer">
-            <Button size="sm" className="gap-2">
-              Get Tickets
-              <ExternalLink className="h-4 w-4" />
-            </Button>
-          </a>
-        )}
       </CardContent>
     </Card>
   );
@@ -66,7 +87,7 @@ function EventCard({ event, isPast = false }: { event: any; isPast?: boolean }) 
 export default async function SchedulePage() {
   let upcomingEvents: any[] = [];
   let pastEvents: any[] = [];
-  
+
   try {
     const [upcoming, past] = await Promise.all([
       getUpcomingEvents(),
@@ -87,7 +108,7 @@ export default async function SchedulePage() {
         />
 
         {upcomingEvents.length > 0 ? (
-          <div className="space-y-6">
+          <div className="space-y-4">
             {upcomingEvents.map((event: any) => (
               <EventCard key={event.id} event={event} />
             ))}
@@ -106,8 +127,8 @@ export default async function SchedulePage() {
 
         {pastEvents.length > 0 && (
           <div className="mt-16">
-            <h2 className="text-2xl font-bold text-white mb-8">Past Shows</h2>
-            <div className="space-y-6">
+            <h2 className="font-display text-2xl font-bold text-white mb-8">Past Shows</h2>
+            <div className="space-y-4">
               {pastEvents.map((event: any) => (
                 <EventCard key={event.id} event={event} isPast />
               ))}

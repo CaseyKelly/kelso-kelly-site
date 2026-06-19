@@ -24,7 +24,7 @@ export default function BioPage() {
         <div className="grid gap-12">
           {/* Bio content with floating photo */}
           <div className="prose prose-invert max-w-none">
-            <div className="bg-zinc-900/50 rounded-2xl p-8 border border-zinc-800 mb-8">
+            <div className="bg-[#100c07] rounded-2xl p-8 border border-[rgba(245,158,11,0.12)] mb-8">
               <div className="relative float-left w-48 sm:w-56 md:w-64 aspect-square rounded-xl overflow-hidden mr-6 mb-4">
                 <Image
                   src="/images/kelso-bio-optimized.webp"
@@ -52,7 +52,7 @@ export default function BioPage() {
           <div className="grid md:grid-cols-2 gap-8">
             <Card>
               <CardContent className="p-8">
-                <h3 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
+                <h3 className="font-display text-xl font-semibold text-white mb-6 flex items-center gap-2">
                   <Music2 className="h-5 w-5 text-amber-500" />
                   Highlights
                 </h3>
@@ -69,7 +69,7 @@ export default function BioPage() {
 
             <Card>
               <CardContent className="p-8">
-                <h3 className="text-xl font-semibold text-white mb-6">
+                <h3 className="font-display text-xl font-semibold text-white mb-6">
                   Musical Journey
                 </h3>
                 <div className="space-y-6">

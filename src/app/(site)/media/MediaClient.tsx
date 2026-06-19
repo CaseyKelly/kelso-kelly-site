@@ -82,7 +82,7 @@ export default function MediaClient({
         />
 
         <div className="flex justify-center mb-12">
-          <div className="inline-flex bg-zinc-900 rounded-xl p-1 border border-zinc-800">
+          <div className="inline-flex bg-[#100c07] rounded-xl p-1 border border-[rgba(245,158,11,0.15)]">
             <button
               onClick={() => setActiveTab("photos")}
               className={cn(
@@ -118,7 +118,7 @@ export default function MediaClient({
                   <button
                     key={photo.id}
                     onClick={() => setSelectedPhoto(photo)}
-                    className="group relative aspect-square rounded-xl overflow-hidden bg-zinc-800 hover:ring-2 hover:ring-amber-500 transition-all"
+                    className="group relative aspect-square rounded-xl overflow-hidden bg-[#1e1710] hover:ring-2 hover:ring-amber-500 transition-all"
                   >
                     <Image
                       src={photo.optimized_url}

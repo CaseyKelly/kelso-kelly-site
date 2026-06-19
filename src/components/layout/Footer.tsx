@@ -1,17 +1,16 @@
 import Link from "next/link";
-import { Music, Mail, Facebook } from "lucide-react";
+import { Mail, Facebook } from "lucide-react";
 import { siteConfig } from "@/data/site-config";
 
 export function Footer() {
   return (
-    <footer className="bg-zinc-950 border-t border-zinc-800">
+    <footer className="bg-[#0a0704] border-t border-[rgba(245,158,11,0.1)]">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div>
-            <Link href="/" className="flex items-center gap-2 group">
-              <Music className="h-8 w-8 text-amber-500" />
-              <span className="text-xl font-bold text-white">
-                {siteConfig.name}
+            <Link href="/" className="group">
+              <span className="font-display text-xl font-bold text-white group-hover:text-amber-400 transition-colors">
+                <em className="not-italic italic text-amber-400">Kelso</em>{" "}Kelly
               </span>
             </Link>
             <p className="mt-4 text-zinc-400 text-sm max-w-xs">
@@ -90,7 +89,7 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-12 pt-8 border-t border-zinc-800">
+        <div className="mt-12 pt-8 border-t border-[rgba(245,158,11,0.08)]">
           <p className="text-center text-zinc-500 text-sm">
             &copy; {new Date().getFullYear()} {siteConfig.name}. All rights
             reserved.

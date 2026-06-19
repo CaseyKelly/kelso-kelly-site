@@ -58,7 +58,7 @@ export default function ContactPage() {
               <div className="w-20 h-20 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
                 <Mail className="h-10 w-10 text-amber-500" />
               </div>
-              <h2 className="text-2xl font-bold text-white mb-4">Ready to Book?</h2>
+              <h2 className="font-display text-2xl font-bold italic text-white mb-4">Ready to Book?</h2>
               <p className="text-zinc-400 mb-8">
                 Send an email to discuss your event, check availability, or ask any questions. 
                 Include details about your event type, date, and location.

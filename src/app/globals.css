@@ -1,15 +1,19 @@
 @import "tailwindcss";
 
 :root {
-  --background: #09090b;
+  --background: #0a0704;
   --foreground: #fafafa;
+  --bg-card: #100c07;
+  --bg-raised: #1e1710;
+  --border-subtle: rgba(245, 158, 11, 0.12);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-dm-sans);
+  --font-display: var(--font-playfair);
+  --font-mono: ui-monospace, monospace;
 }
 
 body {
@@ -66,7 +70,6 @@ html {
   background: radial-gradient(ellipse at center, var(--tw-gradient-from) 0%, var(--tw-gradient-to) 70%);
 }
 
-/* Subtle parallax zoom effect for hero image */
 @keyframes hero-zoom {
   0% {
     transform: scale(1.1);

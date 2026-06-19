@@ -73,7 +73,7 @@ export default function SongsClient({ songs }: { songs: Song[] }) {
               placeholder="Search by song title or artist..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-zinc-900 border border-zinc-800 rounded-xl text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
+              className="w-full pl-12 pr-4 py-3 bg-[#100c07] border border-[rgba(245,158,11,0.15)] rounded-xl text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
             />
           </div>
 
@@ -85,7 +85,7 @@ export default function SongsClient({ songs }: { songs: Song[] }) {
                 "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
                 selectedGenre === null
                   ? "bg-amber-500 text-zinc-950"
-                  : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+                  : "bg-[#1e1710] text-zinc-300 hover:bg-[#2a2010]"
               )}
             >
               All
@@ -122,10 +122,10 @@ export default function SongsClient({ songs }: { songs: Song[] }) {
                     {genreSongs.length}
                   </Badge>
                 </h3>
-                <div className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
+                <div className="bg-[#100c07] rounded-xl border border-[rgba(245,158,11,0.12)] overflow-hidden">
                   <table className="w-full">
                     <thead>
-                      <tr className="border-b border-zinc-800">
+                      <tr className="border-b border-[rgba(245,158,11,0.12)]">
                         <th className="text-left py-3 px-4 text-sm font-medium text-zinc-500">
                           Song
                         </th>
@@ -139,8 +139,8 @@ export default function SongsClient({ songs }: { songs: Song[] }) {
                         <tr
                           key={song.id || `${song.title}-${song.artist}-${index}`}
                           className={cn(
-                            "transition-colors hover:bg-zinc-800/50",
-                            index < genreSongs.length - 1 && "border-b border-zinc-800/50"
+                            "transition-colors hover:bg-amber-500/5",
+                            index < genreSongs.length - 1 && "border-b border-[rgba(245,158,11,0.08)]"
                           )}
                         >
                           <td className="py-3 px-4 text-white">{song.title}</td>
@@ -165,7 +165,7 @@ export default function SongsClient({ songs }: { songs: Song[] }) {
           </div>
         )}
 
-        <div className="mt-12 p-6 bg-zinc-900/50 rounded-xl border border-zinc-800 text-center">
+        <div className="mt-12 p-6 bg-[#100c07]/60 rounded-xl border border-[rgba(245,158,11,0.12)] text-center">
           <p className="text-zinc-400">
             Don&apos;t see a song you&apos;d like to hear?{" "}
             <a href="/contact" className="text-amber-500 hover:text-amber-400 transition-colors">

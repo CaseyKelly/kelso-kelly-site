@@ -46,7 +46,7 @@ export default function ContactPage() {
               </div>
               <h3 className="font-semibold text-white mb-2">Available For</h3>
               <p className="text-zinc-400 text-sm">
-                Venues, Weddings, Private Events
+                Venues, Weddings, House Parties, Backyard BBQs & More
               </p>
             </CardContent>
           </Card>

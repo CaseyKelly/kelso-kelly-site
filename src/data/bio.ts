@@ -15,7 +15,7 @@ Now retired from banking, Kelso has returned to his roots as a dedicated solo pe
     "Extensive repertoire spanning Pop, Old-School R&B, and Modern Country",
     "Still performs with Trainwreck as lead guitarist during summer months",
     "Regular performer at Northern Colorado venues",
-    "Available for private events, weddings, and corporate functions",
+    "Available for private events, weddings, house parties, backyard BBQs, and corporate functions",
   ],
 
   timeline: [

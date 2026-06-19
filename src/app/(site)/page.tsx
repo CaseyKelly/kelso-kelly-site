@@ -282,7 +282,7 @@ export default async function HomePage() {
             Let&apos;s make your event memorable.
           </h2>
           <p className="text-zinc-400 text-lg mb-10 max-w-2xl mx-auto">
-            Weddings, house parties, backyard BBQs, corporate events, venue bookings —
+            Weddings, house concerts, backyard BBQs, corporate events, venue bookings —
             Kelso tailors every set to the moment and the crowd.
           </p>
           <Link href="/contact">

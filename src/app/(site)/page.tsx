@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
 import { ParallaxHeroImage } from "@/components/ui/ParallaxHeroImage";
+import { JsonLd } from "@/components/JsonLd";
 import { siteConfig } from "@/data/site-config";
 import { getUpcomingEvents, getVideos } from "@/lib/db";
 import { formatDate } from "@/lib/utils";
@@ -62,8 +63,38 @@ export default async function HomePage() {
   const displayEvents = upcomingEvents.slice(0, 3);
   const featuredVideo = videos.length > 0 ? videos[0] : null;
 
+  const personSchema = {
+    "@context": "https://schema.org",
+    "@type": "MusicGroup",
+    name: "Kelso Kelly",
+    url: "https://www.kelsokellymusic.com",
+    description: siteConfig.description,
+    genre: siteConfig.genres,
+    email: siteConfig.email,
+    image: "https://www.kelsokellymusic.com/images/kelso-performing-optimized.webp",
+    sameAs: [siteConfig.socialLinks.facebook],
+    location: {
+      "@type": "Place",
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: "Fort Collins",
+        addressRegion: "CO",
+        addressCountry: "US",
+      },
+    },
+    areaServed: [
+      { "@type": "City", name: "Fort Collins", containedInPlace: { "@type": "State", name: "Colorado" } },
+      { "@type": "City", name: "Loveland", containedInPlace: { "@type": "State", name: "Colorado" } },
+      { "@type": "City", name: "Greeley", containedInPlace: { "@type": "State", name: "Colorado" } },
+      { "@type": "City", name: "Windsor", containedInPlace: { "@type": "State", name: "Colorado" } },
+      { "@type": "City", name: "Longmont", containedInPlace: { "@type": "State", name: "Colorado" } },
+      { "@type": "City", name: "Boulder", containedInPlace: { "@type": "State", name: "Colorado" } },
+    ],
+  };
+
   return (
     <div className="flex flex-col">
+      <JsonLd data={personSchema} />
       {/* Hero Section */}
       <section className="relative min-h-[90vh] flex items-end overflow-hidden">
         <ParallaxHeroImage

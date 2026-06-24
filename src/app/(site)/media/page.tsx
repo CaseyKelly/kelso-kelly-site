@@ -6,7 +6,9 @@ export const revalidate = 3600; // 1 hour
 
 export const metadata: Metadata = {
   title: "Photos & Videos",
-  description: "See Kelso Kelly in action at venues across Northern Colorado - photos and videos from live performances.",
+  description:
+    "Photos and videos of Kelso Kelly performing live at venues across Fort Collins, Loveland, and Northern Colorado.",
+  alternates: { canonical: "/media" },
 };
 
 export default async function MediaPage() {

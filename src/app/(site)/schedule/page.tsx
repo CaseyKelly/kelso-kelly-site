@@ -3,14 +3,17 @@ import { Calendar, MapPin, ExternalLink } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { SectionHeader } from "@/components/ui/SectionHeader";
+import { JsonLd } from "@/components/JsonLd";
 import { getUpcomingEvents, getPastEvents } from "@/lib/db";
 import { formatDate } from "@/lib/utils";
 
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-  title: "Schedule",
-  description: "View upcoming shows and performances by Kelso Kelly across Northern Colorado.",
+  title: "Upcoming Shows",
+  description:
+    "Catch Kelso Kelly live at venues across Fort Collins, Loveland, Greeley, and Northern Colorado. View the full show schedule and get tickets.",
+  alternates: { canonical: "/schedule" },
 };
 
 function parseEventDate(dateStr: string): { month: string; day: string } {
@@ -99,8 +102,46 @@ export default async function SchedulePage() {
     console.warn('Unable to fetch events:', error);
   }
 
+  const eventSchema = upcomingEvents.length > 0
+    ? {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        itemListElement: upcomingEvents.map((event: any, index: number) => ({
+          "@type": "ListItem",
+          position: index + 1,
+          item: {
+            "@type": "MusicEvent",
+            name: event.title,
+            startDate: event.date,
+            performer: {
+              "@type": "MusicGroup",
+              name: "Kelso Kelly",
+              url: "https://www.kelsokellymusic.com",
+            },
+            location: event.venue
+              ? {
+                  "@type": "Place",
+                  name: event.venue,
+                  address: event.address || "Northern Colorado",
+                }
+              : {
+                  "@type": "Place",
+                  address: {
+                    "@type": "PostalAddress",
+                    addressRegion: "CO",
+                    addressCountry: "US",
+                  },
+                },
+            url: event.ticket_url || "https://www.kelsokellymusic.com/schedule",
+            ...(event.description && { description: event.description }),
+          },
+        })),
+      }
+    : null;
+
   return (
     <div className="min-h-screen py-24">
+      {eventSchema && <JsonLd data={eventSchema} />}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <SectionHeader
           title="Upcoming Shows"

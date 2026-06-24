@@ -1,8 +1,16 @@
+import { Metadata } from "next";
 import { Mail, MapPin, Music } from "lucide-react";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { siteConfig } from "@/data/site-config";
+
+export const metadata: Metadata = {
+  title: "Book Kelso Kelly",
+  description:
+    "Book Kelso Kelly for your wedding, house concert, backyard BBQ, or private event in Fort Collins, Loveland, Greeley, and across Northern Colorado.",
+  alternates: { canonical: "/contact" },
+};
 
 export default function ContactPage() {
   return (

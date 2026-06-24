@@ -6,8 +6,10 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { bio } from "@/data/bio";
 
 export const metadata: Metadata = {
-  title: "Bio",
-  description: "Learn about Kelso Kelly's musical journey spanning over 40 years of performances across Colorado.",
+  title: "About Kelso Kelly",
+  description:
+    "40+ years of live music in Colorado. Kelso Kelly is a Fort Collins-based guitarist and vocalist performing pop, R&B, and country — solo and as the Cattywampus Duo.",
+  alternates: { canonical: "/bio" },
 };
 
 export default function BioPage() {

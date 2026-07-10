@@ -71,7 +71,7 @@ export default async function HomePage() {
     description: siteConfig.description,
     genre: siteConfig.genres,
     email: siteConfig.email,
-    image: "https://www.kelsokellymusic.com/images/kelso-performing-optimized.webp",
+    image: "https://www.kelsokellymusic.com/images/kelso-performing-in-trees-optimized.webp",
     sameAs: [siteConfig.socialLinks.facebook],
     location: {
       "@type": "Place",
@@ -98,7 +98,7 @@ export default async function HomePage() {
       {/* Hero Section */}
       <section className="relative min-h-[90vh] flex items-end overflow-hidden">
         <ParallaxHeroImage
-          src="/images/kelso-performing-optimized.webp"
+          src="/images/kelso-performing-in-trees-optimized.webp"
           alt="Kelso Kelly performing live"
         />
 

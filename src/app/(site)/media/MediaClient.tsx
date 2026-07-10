@@ -125,6 +125,7 @@ export default function MediaClient({
                       alt={photo.alt_text || photo.title}
                       fill
                       className="object-cover"
+                      sizes="(max-width: 767px) 50vw, (max-width: 1152px) 33vw, 384px"
                     />
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
                       <span className="opacity-0 group-hover:opacity-100 text-white font-medium transition-opacity">
@@ -224,6 +225,7 @@ export default function MediaClient({
                   alt={selectedPhoto.alt_text || selectedPhoto.title}
                   fill
                   className="object-contain rounded-xl"
+                  sizes="(max-width: 896px) 100vw, 896px"
                 />
               </div>
             </div>

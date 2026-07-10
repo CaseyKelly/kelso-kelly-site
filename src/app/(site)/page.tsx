@@ -98,7 +98,7 @@ export default async function HomePage() {
       {/* Hero Section */}
       <section className="relative min-h-[90vh] flex items-end overflow-hidden">
         <ParallaxHeroImage
-          src="/images/kelso-performing-optimized.webp"
+          src="/images/kelso-performing-in-trees-optimized.webp"
           alt="Kelso Kelly performing live"
         />
 

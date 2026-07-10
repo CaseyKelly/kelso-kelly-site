@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 
 interface ParallaxHeroImageProps {
@@ -10,6 +10,17 @@ interface ParallaxHeroImageProps {
 
 export function ParallaxHeroImage({ src, alt }: ParallaxHeroImageProps) {
   const imageRef = useRef<HTMLDivElement>(null)
+  const [objectPosition, setObjectPosition] = useState('center 30%')
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)')
+    const update = (e: MediaQueryList | MediaQueryListEvent) => {
+      setObjectPosition(e.matches ? 'center 30%' : 'center 60%')
+    }
+    update(mq)
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -43,7 +54,8 @@ export function ParallaxHeroImage({ src, alt }: ParallaxHeroImageProps) {
           src={src}
           alt={alt}
           fill
-          className="object-cover object-[center_30%] hero-image"
+          className="object-cover hero-image"
+          style={{ objectPosition }}
           priority
           quality={90}
         />

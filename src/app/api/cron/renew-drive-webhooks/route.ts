@@ -49,8 +49,13 @@ export async function GET(request: NextRequest) {
             console.warn('Could not stop old channel (may already be expired):', error);
           }
           
-          // Create new webhook
-          const result = await setupDriveWebhook(`${baseUrl}/api/webhook-drive`);
+          // Create new webhook, re-watching the same folder via the same route
+          if (!channel.webhook_url || !channel.folder_id) {
+            throw new Error(
+              `Drive channel ${channel.channel_id} is missing webhook_url/folder_id (re-run /api/webhooks/setup)`
+            );
+          }
+          const result = await setupDriveWebhook(channel.webhook_url, channel.folder_id);
           console.log(`Created new Drive webhook: ${result.channelId}`);
           
           // Delete old record from database

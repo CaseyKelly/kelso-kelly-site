@@ -78,7 +78,8 @@ src/app/api/
   sync-photos/route.ts       # Manual photo sync trigger
   sync-videos/route.ts       # Manual video sync trigger
   webhook-calendar/route.ts  # Google Calendar webhook receiver
-  webhook-drive/route.ts     # Google Drive webhook receiver
+  webhook-drive/route.ts     # Google Drive webhook receiver (photos folder)
+  webhook-drive-videos/route.ts # Google Drive webhook receiver (videos folder) - triggers GitHub Actions, doesn't sync in-request
   contact/route.ts           # Contact form submission handler
   cron/renew-webhooks/       # Daily webhook renewal (Vercel cron)
   webhooks/setup/            # Initial webhook setup endpoint
@@ -125,6 +126,12 @@ YOUTUBE_CLIENT_SECRET             # OAuth client secret
 YOUTUBE_REFRESH_TOKEN             # One-time-obtained refresh token, see scripts/get-youtube-refresh-token.js
 ```
 The YouTube Data API doesn't accept service-account auth for uploads, so this pipeline runs as a scheduled GitHub Actions workflow (`.github/workflows/sync-drive-videos-to-youtube.yml`), not a Vercel function — uploads can be slow/large enough to risk a function timeout.
+
+Required as a Vercel env var (in addition to the above) so the videos Drive webhook can trigger that workflow instantly instead of waiting for its 6-hour cron:
+```
+GITHUB_ACTIONS_TOKEN                # Fine-grained GitHub PAT, Actions:read+write on this repo only
+```
+`/api/webhook-drive-videos` receives the Drive push notification and calls GitHub's `workflow_dispatch` API — it does not perform the upload itself. `webhook_channels.folder_id` tracks which Drive folder each channel watches so `/api/cron/renew-drive-webhooks` can renew multiple Drive folders (photos + videos) generically.
 
 ### Vercel Cron Jobs
 
@@ -187,6 +194,7 @@ Branch naming: `feature/`, `fix/`, `refactor/`, `docs/`
 - `src/lib/google-sheets.ts` - Google Sheets API integration
 - `src/lib/image-optimizer.ts` - Sharp-based image optimization
 - `src/lib/webhooks.ts` - Google webhook setup and renewal
+- `src/lib/github-actions.ts` - Triggers the YouTube sync GitHub Actions workflow via `workflow_dispatch`
 - `db/schema.sql` - PostgreSQL database schema
 - `scripts/sync-drive-videos-to-youtube.js` - Uploads new Drive videos to YouTube, appends to the Videos sheet (run via GitHub Actions, not Vercel)
 - `scripts/get-youtube-refresh-token.js` - One-time local script to obtain the YouTube OAuth refresh token

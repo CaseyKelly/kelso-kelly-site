@@ -72,10 +72,13 @@ CREATE TABLE IF NOT EXISTS webhook_channels (
   resource_id VARCHAR(255) NOT NULL,
   expiration BIGINT NOT NULL, -- Unix timestamp in milliseconds
   webhook_url TEXT, -- URL where webhook notifications are sent
+  folder_id VARCHAR(255), -- Drive folder being watched (resource_type = 'drive' only); lets renewal re-watch the right folder
   last_renewed_at TIMESTAMP, -- When webhook was last successfully renewed
   renewal_failures INTEGER DEFAULT 0, -- Count of consecutive renewal failures
   created_at TIMESTAMP DEFAULT NOW()
 );
+
+ALTER TABLE webhook_channels ADD COLUMN IF NOT EXISTS folder_id VARCHAR(255);
 
 CREATE INDEX IF NOT EXISTS idx_webhook_channels_expiration ON webhook_channels(expiration);
 

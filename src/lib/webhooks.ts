@@ -33,28 +33,25 @@ export async function setupCalendarWebhook(webhookUrl: string) {
 }
 
 /**
- * Set up webhook for Google Drive photos folder
+ * Set up webhook for a Google Drive folder (photos or videos)
  * Drive webhooks expire after 24 hours
  */
-export async function setupDriveWebhook(webhookUrl: string) {
-  if (!process.env.GOOGLE_DRIVE_PHOTOS_FOLDER_ID) {
-    throw new Error('GOOGLE_DRIVE_PHOTOS_FOLDER_ID not configured');
-  }
-
+export async function setupDriveWebhook(webhookUrl: string, folderId: string) {
   const channelId = `drive-${Date.now()}`;
-  const folderId = process.env.GOOGLE_DRIVE_PHOTOS_FOLDER_ID;
-  
+
   try {
     const result = await watchFolder(webhookUrl, channelId, folderId);
-    
+
     // Store in database
     await upsertWebhookChannel({
       channel_id: result.channelId,
       resource_type: 'drive',
       resource_id: result.resourceId,
       expiration: result.expiration,
+      webhook_url: webhookUrl,
+      folder_id: folderId,
     });
-    
+
     console.log('Drive webhook set up:', result);
     return result;
   } catch (error) {
@@ -94,27 +91,15 @@ export async function renewWebhooks(baseUrl: string) {
         
         // Stop old webhook (handles 404 gracefully if already expired)
         try {
-          if (channel.resource_type === 'calendar') {
-            await stopWatchingCalendar(channel.channel_id, channel.resource_id);
-          } else if (channel.resource_type === 'drive') {
-            await stopWatchingFolder(channel.channel_id, channel.resource_id);
-          }
+          await stopWatchingCalendar(channel.channel_id, channel.resource_id);
         } catch (stopError) {
           console.warn(`Warning: Could not stop old ${channel.resource_type} channel, continuing with renewal...`, stopError);
         }
-        
+
         // Set up new webhook FIRST (before deleting old record)
         // This ensures if setup fails, the old record exists for retry on next cron run
-        let newChannelId: string;
-        if (channel.resource_type === 'calendar') {
-          const result = await setupCalendarWebhook(`${baseUrl}/api/webhook-calendar`);
-          newChannelId = result.channelId;
-        } else if (channel.resource_type === 'drive') {
-          const result = await setupDriveWebhook(`${baseUrl}/api/webhook-drive`);
-          newChannelId = result.channelId;
-        } else {
-          throw new Error(`Unknown webhook resource type: ${channel.resource_type}`);
-        }
+        const result = await setupCalendarWebhook(`${baseUrl}/api/webhook-calendar`);
+        const newChannelId: string = result.channelId;
         
         // Now that new webhook is created, delete old channel from database
         await deleteWebhookChannel(channel.channel_id);
@@ -183,24 +168,43 @@ export async function initializeWebhooks(baseUrl: string) {
   
   const results = {
     calendar: null as unknown,
-    drive: null as unknown,
+    drivePhotos: null as unknown,
+    driveVideos: null as unknown,
     cleanup,
     errors: [] as string[],
   };
-  
+
   try {
     results.calendar = await setupCalendarWebhook(`${baseUrl}/api/webhook-calendar`);
   } catch (error) {
     console.error('Failed to set up calendar webhook:', error);
     results.errors.push(`Calendar: ${error}`);
   }
-  
+
   try {
-    results.drive = await setupDriveWebhook(`${baseUrl}/api/webhook-drive`);
+    if (!process.env.GOOGLE_DRIVE_PHOTOS_FOLDER_ID) {
+      throw new Error('GOOGLE_DRIVE_PHOTOS_FOLDER_ID not configured');
+    }
+    results.drivePhotos = await setupDriveWebhook(
+      `${baseUrl}/api/webhook-drive`,
+      process.env.GOOGLE_DRIVE_PHOTOS_FOLDER_ID
+    );
   } catch (error) {
-    console.error('Failed to set up drive webhook:', error);
-    results.errors.push(`Drive: ${error}`);
+    console.error('Failed to set up drive photos webhook:', error);
+    results.errors.push(`Drive photos: ${error}`);
   }
-  
+
+  if (process.env.GOOGLE_DRIVE_VIDEOS_FOLDER_ID) {
+    try {
+      results.driveVideos = await setupDriveWebhook(
+        `${baseUrl}/api/webhook-drive-videos`,
+        process.env.GOOGLE_DRIVE_VIDEOS_FOLDER_ID
+      );
+    } catch (error) {
+      console.error('Failed to set up drive videos webhook:', error);
+      results.errors.push(`Drive videos: ${error}`);
+    }
+  }
+
   return results;
 }

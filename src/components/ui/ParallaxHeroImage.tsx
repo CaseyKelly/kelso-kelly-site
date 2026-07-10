@@ -10,12 +10,12 @@ interface ParallaxHeroImageProps {
 
 export function ParallaxHeroImage({ src, alt }: ParallaxHeroImageProps) {
   const imageRef = useRef<HTMLDivElement>(null)
-  const [objectPosition, setObjectPosition] = useState('center 30%')
+  const [objectPosition, setObjectPosition] = useState('center 27%')
 
   useEffect(() => {
     const mq = window.matchMedia('(min-width: 1024px)')
     const update = (e: MediaQueryList | MediaQueryListEvent) => {
-      setObjectPosition(e.matches ? 'center 30%' : 'center 60%')
+      setObjectPosition(e.matches ? 'center 27%' : 'center 60%')
     }
     update(mq)
     mq.addEventListener('change', update)

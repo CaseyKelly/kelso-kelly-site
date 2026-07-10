@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 
 /**
- * Uploads new videos from a Google Drive folder to YouTube, then appends
- * the resulting title + URL to the Google Sheet that feeds the site's
- * existing video sync (see src/lib/sync.ts -> syncVideos).
+ * Uploads new videos from a Google Drive folder to YouTube, then inserts
+ * the resulting title + URL as row 3 of the Google Sheet that feeds the
+ * site's existing video sync (see src/lib/sync.ts -> syncVideos), so new
+ * uploads appear right after the pinned first video rather than at the bottom.
  *
  * Intended to run on a schedule via GitHub Actions (see
  * .github/workflows/sync-drive-videos-to-youtube.yml) rather than as a
@@ -59,6 +60,48 @@ function stripExtension(fileName) {
   return fileName.replace(/\.[^/.]+$/, '');
 }
 
+const VIDEOS_SHEET_NAME = 'Videos';
+const NEW_VIDEO_ROW_INDEX = 2; // 0-indexed: row 3 (after the header row + pinned first video row)
+
+async function getSheetId(sheets, spreadsheetId, sheetName) {
+  const { data } = await sheets.spreadsheets.get({ spreadsheetId });
+  const sheet = data.sheets.find((s) => s.properties.title === sheetName);
+  if (!sheet) {
+    throw new Error(`Sheet tab "${sheetName}" not found`);
+  }
+  return sheet.properties.sheetId;
+}
+
+// Inserts a new row at NEW_VIDEO_ROW_INDEX (row 3), pushing existing rows down,
+// so new uploads appear right after the pinned first video rather than at the bottom.
+async function insertVideoRow(sheets, spreadsheetId, sheetId, title, youtubeUrl) {
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      requests: [
+        {
+          insertDimension: {
+            range: {
+              sheetId,
+              dimension: 'ROWS',
+              startIndex: NEW_VIDEO_ROW_INDEX,
+              endIndex: NEW_VIDEO_ROW_INDEX + 1,
+            },
+            inheritFromBefore: false,
+          },
+        },
+      ],
+    },
+  });
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `${VIDEOS_SHEET_NAME}!A${NEW_VIDEO_ROW_INDEX + 1}:B${NEW_VIDEO_ROW_INDEX + 1}`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: { values: [[title, youtubeUrl]] },
+  });
+}
+
 async function main() {
   const missing = REQUIRED_ENV_VARS.filter((key) => !process.env[key]);
   if (missing.length > 0) {
@@ -86,6 +129,8 @@ async function main() {
   });
   const files = data.files || [];
   console.log(`Found ${files.length} video file(s) in Drive folder`);
+
+  const videosSheetId = await getSheetId(sheets, process.env.GOOGLE_VIDEOS_SHEET_ID, VIDEOS_SHEET_NAME);
 
   let uploadedCount = 0;
   let skippedCount = 0;
@@ -120,12 +165,7 @@ async function main() {
     const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
     console.log(`Uploaded "${title}" -> ${youtubeUrl}`);
 
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: process.env.GOOGLE_VIDEOS_SHEET_ID,
-      range: 'Videos!A:E',
-      valueInputOption: 'USER_ENTERED',
-      requestBody: { values: [[title, youtubeUrl]] },
-    });
+    await insertVideoRow(sheets, process.env.GOOGLE_VIDEOS_SHEET_ID, videosSheetId, title, youtubeUrl);
 
     await sql`
       INSERT INTO youtube_uploads (drive_file_id, drive_file_name, youtube_video_id, youtube_url)
@@ -133,7 +173,7 @@ async function main() {
     `;
 
     uploadedCount += 1;
-    console.log(`Recorded upload and appended sheet row for "${file.name}"`);
+    console.log(`Recorded upload and inserted sheet row for "${file.name}"`);
   }
 
   console.log(`Done. Uploaded ${uploadedCount}, skipped ${skippedCount} already-uploaded file(s).`);

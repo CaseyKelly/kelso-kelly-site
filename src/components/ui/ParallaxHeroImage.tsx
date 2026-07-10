@@ -56,6 +56,7 @@ export function ParallaxHeroImage({ src, alt }: ParallaxHeroImageProps) {
           fill
           className="object-cover hero-image"
           style={{ objectPosition }}
+          sizes="100vw"
           priority
           quality={75}
         />

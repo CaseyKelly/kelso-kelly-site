@@ -57,7 +57,7 @@ export function ParallaxHeroImage({ src, alt }: ParallaxHeroImageProps) {
           className="object-cover hero-image"
           style={{ objectPosition }}
           priority
-          quality={90}
+          quality={75}
         />
       </div>
       {/* Dark overlay for text readability */}

@@ -117,6 +117,15 @@ RESEND_FROM_EMAIL                 # Sender email address
 CONTACT_EMAIL                     # Recipient for contact form
 ```
 
+Required as GitHub Actions secrets only (not used by the Next.js app) for the Drive → YouTube upload pipeline — see `scripts/sync-drive-videos-to-youtube.js`:
+```
+GOOGLE_DRIVE_VIDEOS_FOLDER_ID      # Drive folder watched for new raw video files
+YOUTUBE_CLIENT_ID                 # OAuth client (Desktop app type) for YouTube uploads
+YOUTUBE_CLIENT_SECRET             # OAuth client secret
+YOUTUBE_REFRESH_TOKEN             # One-time-obtained refresh token, see scripts/get-youtube-refresh-token.js
+```
+The YouTube Data API doesn't accept service-account auth for uploads, so this pipeline runs as a scheduled GitHub Actions workflow (`.github/workflows/sync-drive-videos-to-youtube.yml`), not a Vercel function — uploads can be slow/large enough to risk a function timeout.
+
 ### Vercel Cron Jobs
 
 Configured in `vercel.json`:
@@ -179,3 +188,5 @@ Branch naming: `feature/`, `fix/`, `refactor/`, `docs/`
 - `src/lib/image-optimizer.ts` - Sharp-based image optimization
 - `src/lib/webhooks.ts` - Google webhook setup and renewal
 - `db/schema.sql` - PostgreSQL database schema
+- `scripts/sync-drive-videos-to-youtube.js` - Uploads new Drive videos to YouTube, appends to the Videos sheet (run via GitHub Actions, not Vercel)
+- `scripts/get-youtube-refresh-token.js` - One-time local script to obtain the YouTube OAuth refresh token

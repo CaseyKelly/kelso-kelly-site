@@ -78,3 +78,16 @@ CREATE TABLE IF NOT EXISTS webhook_channels (
 );
 
 CREATE INDEX IF NOT EXISTS idx_webhook_channels_expiration ON webhook_channels(expiration);
+
+-- YouTube uploads table (tracks which Drive video files have already been
+-- uploaded to YouTube, so the sync script never uploads the same file twice)
+CREATE TABLE IF NOT EXISTS youtube_uploads (
+  id SERIAL PRIMARY KEY,
+  drive_file_id VARCHAR(255) UNIQUE NOT NULL,
+  drive_file_name VARCHAR(255) NOT NULL,
+  youtube_video_id VARCHAR(255) NOT NULL,
+  youtube_url TEXT NOT NULL,
+  uploaded_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_youtube_uploads_drive_file_id ON youtube_uploads(drive_file_id);

@@ -107,10 +107,11 @@ Existing photos skip steps 1-3 during sync to avoid expensive re-processing.
 Required for local development (`.env.local`):
 ```
 DATABASE_URL                      # Neon PostgreSQL connection string
-GOOGLE_CLIENT_EMAIL               # Service account email
+GOOGLE_SERVICE_ACCOUNT_EMAIL      # Service account email
 GOOGLE_PRIVATE_KEY                # Service account private key
 GOOGLE_CALENDAR_ID                # Calendar to sync from
 GOOGLE_DRIVE_PHOTOS_FOLDER_ID     # Photos folder ID
+GOOGLE_DRIVE_VIDEOS_FOLDER_ID     # Videos folder ID — also used by the Next.js app to set up the videos Drive webhook (see below)
 GOOGLE_VIDEOS_SHEET_ID            # Videos spreadsheet ID
 CRON_SECRET                       # Auth token for cron/sync endpoints
 RESEND_API_KEY                    # Resend API key for emails
@@ -118,9 +119,9 @@ RESEND_FROM_EMAIL                 # Sender email address
 CONTACT_EMAIL                     # Recipient for contact form
 ```
 
-Required as GitHub Actions secrets only (not used by the Next.js app) for the Drive → YouTube upload pipeline — see `scripts/sync-drive-videos-to-youtube.js`:
+Required as a GitHub Actions secret too (in addition to the Vercel env var above) for the Drive → YouTube upload pipeline — see `scripts/sync-drive-videos-to-youtube.js`:
 ```
-GOOGLE_DRIVE_VIDEOS_FOLDER_ID      # Drive folder watched for new raw video files
+GOOGLE_DRIVE_VIDEOS_FOLDER_ID      # Same value as the Vercel env var — Drive folder watched for new raw video files
 YOUTUBE_CLIENT_ID                 # OAuth client (Desktop app type) for YouTube uploads
 YOUTUBE_CLIENT_SECRET             # OAuth client secret
 YOUTUBE_REFRESH_TOKEN             # One-time-obtained refresh token, see scripts/get-youtube-refresh-token.js
@@ -132,6 +133,8 @@ Required as a Vercel env var (in addition to the above) so the videos Drive webh
 GITHUB_ACTIONS_TOKEN                # Fine-grained GitHub PAT, Actions:read+write on this repo only
 ```
 `/api/webhook-drive-videos` receives the Drive push notification and calls GitHub's `workflow_dispatch` API — it does not perform the upload itself. `webhook_channels.folder_id` tracks which Drive folder each channel watches so `/api/cron/renew-drive-webhooks` can renew multiple Drive folders (photos + videos) generically.
+
+**Important**: adding `GOOGLE_DRIVE_VIDEOS_FOLDER_ID`/`GITHUB_ACTIONS_TOKEN` to Vercel is not enough on its own — `POST /api/webhooks/setup` (with `WEBHOOK_SETUP_SECRET`) must also be called once to actually create the Google Drive "watch" subscription for the videos folder. Until that call is made, Google has no channel to notify and new videos will silently fall back to the 6-hour cron instead of uploading instantly.
 
 ### Vercel Cron Jobs
 

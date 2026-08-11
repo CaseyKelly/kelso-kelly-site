@@ -2,6 +2,10 @@ import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
+  // Keep sharp out of the Turbopack/webpack bundle so its native libvips
+  // binary is resolved normally from node_modules at runtime instead of
+  // being traced/bundled (which breaks native binding loading on Vercel).
+  serverExternalPackages: ["sharp"],
   images: {
     formats: ["image/avif", "image/webp"],
     remotePatterns: [

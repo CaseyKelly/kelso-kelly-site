@@ -7,7 +7,6 @@ import {
   findFolderByName
 } from './google-drive';
 import { fetchVideosFromSheetWithThumbnails } from './google-sheets';
-import { optimizeImage, isHeicFile, UnsupportedFormatError } from './image-optimizer';
 import {
   sql,
   upsertEvent,
@@ -181,6 +180,10 @@ export async function syncPhotos(force = false): Promise<SyncResult> {
 
   try {
     console.log('Starting photo sync...');
+
+    // Loaded lazily so routes that only sync calendar/video data never pull
+    // in sharp (and its native libvips binary) into their function bundle.
+    const { optimizeImage, isHeicFile, UnsupportedFormatError } = await import('./image-optimizer');
 
     if (!process.env.GOOGLE_DRIVE_PHOTOS_FOLDER_ID) {
       throw new Error('GOOGLE_DRIVE_PHOTOS_FOLDER_ID not configured');

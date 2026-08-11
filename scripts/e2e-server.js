@@ -9,9 +9,13 @@
  * something globalSetup hasn't been given a chance to create yet.
  *
  * Steps: seed the test Postgres -> start the local neon-http-bridge in this
- * same process -> spawn `next build` then `next start`, both with the
- * neon-e2e-preload.js hook so the app talks to the bridge (and therefore the
- * real seeded Postgres) during build-time prerendering and at runtime.
+ * same process -> spawn `next build` then `next start`, both with
+ * NEON_HTTP_BRIDGE_URL set so src/lib/db.ts points neonConfig.fetchEndpoint
+ * at the bridge (and therefore the real seeded Postgres) during build-time
+ * prerendering and at runtime. A plain env var is used instead of a
+ * NODE_OPTIONS=--require hook because Next 16's Turbopack build spawns
+ * internal worker processes for static generation that don't reliably
+ * inherit NODE_OPTIONS - env vars propagate to every child/worker regardless.
  */
 const { readFileSync } = require('fs');
 const { resolve } = require('path');
@@ -39,7 +43,7 @@ function run(command, args) {
         RESEND_FROM_EMAIL: 'e2e-test@example.com',
         CONTACT_EMAIL: 'e2e-bookings@example.com',
         ...process.env,
-        NODE_OPTIONS: `${process.env.NODE_OPTIONS || ''} --require ${require.resolve('./neon-e2e-preload.js')}`.trim(),
+        NEON_HTTP_BRIDGE_URL: `http://127.0.0.1:${NEON_BRIDGE_PORT}/sql`,
       },
     });
     children.push(child);

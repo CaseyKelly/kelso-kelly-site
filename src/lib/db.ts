@@ -1,4 +1,11 @@
-import { neon } from '@neondatabase/serverless';
+import { neon, neonConfig } from '@neondatabase/serverless';
+
+// Test-only: redirect neon()'s HTTP driver at a local bridge in front of a
+// real Postgres instance (see scripts/neon-http-bridge.js). Never set outside
+// test/CI infra - neon() otherwise only ever talks to a real Neon endpoint.
+if (process.env.NEON_HTTP_BRIDGE_URL) {
+  neonConfig.fetchEndpoint = process.env.NEON_HTTP_BRIDGE_URL;
+}
 
 // Allow build to succeed without DATABASE_URL (for static pages)
 // At runtime, pages that need the database will fail if it's not set

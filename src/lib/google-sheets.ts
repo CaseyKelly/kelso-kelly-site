@@ -28,7 +28,7 @@ export interface SheetVideo {
 /**
  * Extract YouTube video ID from URL to get thumbnail
  */
-function getYouTubeThumbnail(url: string): string | null {
+export function getYouTubeThumbnail(url: string): string | null {
   try {
     const videoIdMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
     if (videoIdMatch && videoIdMatch[1]) {
@@ -43,7 +43,7 @@ function getYouTubeThumbnail(url: string): string | null {
 /**
  * Parse category string to valid category type
  */
-function parseCategory(category?: string): 'live' | 'music-video' | 'interview' | undefined {
+export function parseCategory(category?: string): 'live' | 'music-video' | 'interview' | undefined {
   if (!category) return undefined;
   
   const normalized = category.toLowerCase().trim();

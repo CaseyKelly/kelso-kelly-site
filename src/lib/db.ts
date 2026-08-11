@@ -1,4 +1,29 @@
-import { neon } from '@neondatabase/serverless';
+import { neon, neonConfig } from '@neondatabase/serverless';
+
+// Test-only: redirect neon()'s HTTP driver at a local bridge in front of a
+// real Postgres instance (see scripts/neon-http-bridge.js). Never set outside
+// test/CI infra - neon() otherwise only ever talks to a real Neon endpoint.
+// Restricted to loopback+http so an accidental/misconfigured value in a real
+// environment can't redirect every query (including the full connection
+// string, sent as a header on each request) to an arbitrary remote host.
+function isLoopbackHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
+if (process.env.NEON_HTTP_BRIDGE_URL) {
+  if (isLoopbackHttpUrl(process.env.NEON_HTTP_BRIDGE_URL)) {
+    neonConfig.fetchEndpoint = process.env.NEON_HTTP_BRIDGE_URL;
+  } else {
+    console.warn(
+      `NEON_HTTP_BRIDGE_URL is set but is not a loopback http:// URL - ignoring it. Value: ${process.env.NEON_HTTP_BRIDGE_URL}`
+    );
+  }
+}
 
 // Allow build to succeed without DATABASE_URL (for static pages)
 // At runtime, pages that need the database will fail if it's not set

@@ -1,5 +1,33 @@
-import { describe, it, expect } from 'vitest';
-import { parseLocation, parseDescription, formatTime, formatDate } from './google-calendar';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import {
+  parseLocation,
+  parseDescription,
+  formatTime,
+  formatDate,
+  fetchAllCalendarEvents,
+  watchCalendar,
+  stopWatchingCalendar,
+} from './google-calendar';
+
+// Mocks the googleapis SDK itself (not just this module's wrapper functions)
+// so a googleapis version bump that changes response shapes or error formats
+// would actually be caught here, rather than only exercising our own parsing
+// logic against hand-rolled fixtures.
+const { mockEventsList, mockEventsWatch, mockChannelsStop } = vi.hoisted(() => ({
+  mockEventsList: vi.fn(),
+  mockEventsWatch: vi.fn(),
+  mockChannelsStop: vi.fn(),
+}));
+
+vi.mock('googleapis', () => ({
+  google: {
+    auth: { GoogleAuth: vi.fn().mockImplementation(function GoogleAuth() { return {}; }) },
+    calendar: vi.fn(() => ({
+      events: { list: mockEventsList, watch: mockEventsWatch },
+      channels: { stop: mockChannelsStop },
+    })),
+  },
+}));
 
 describe('parseLocation', () => {
   it('returns nothing for a missing location', () => {
@@ -102,5 +130,104 @@ describe('formatDate', () => {
   it('falls back to today when neither is provided', () => {
     const todayIso = new Date().toISOString().split('T')[0];
     expect(formatDate(undefined, undefined)).toBe(todayIso);
+  });
+});
+
+describe('fetchAllCalendarEvents (against a mocked googleapis client)', () => {
+  beforeEach(() => {
+    mockEventsList.mockReset();
+  });
+
+  it('maps a realistic Calendar API response into CalendarEvent shape', async () => {
+    mockEventsList.mockResolvedValue({
+      data: {
+        items: [
+          {
+            id: 'evt-1',
+            summary: 'Live at The Aggie',
+            location: 'The Aggie Theatre, 204 S College Ave, Fort Collins, CO',
+            description: 'Tickets: https://eventbrite.com/e/1',
+            start: { dateTime: '2026-08-15T02:00:00Z' },
+          },
+        ],
+        nextPageToken: undefined,
+      },
+    });
+
+    const events = await fetchAllCalendarEvents();
+
+    expect(events).toEqual([
+      {
+        id: 'evt-1',
+        title: 'Live at The Aggie',
+        date: '2026-08-15',
+        time: '8:00 PM',
+        venue: 'The Aggie Theatre',
+        address: 'The Aggie Theatre, 204 S College Ave, Fort Collins, CO',
+        description: 'Tickets: https://eventbrite.com/e/1',
+        ticketUrl: 'https://eventbrite.com/e/1',
+      },
+    ]);
+  });
+
+  it('falls back to "Untitled Event" when summary is missing', async () => {
+    mockEventsList.mockResolvedValue({
+      data: { items: [{ id: 'evt-1', start: { date: '2026-08-15' } }] },
+    });
+    const [event] = await fetchAllCalendarEvents();
+    expect(event.title).toBe('Untitled Event');
+  });
+
+  it('follows nextPageToken across multiple pages and combines the results', async () => {
+    mockEventsList
+      .mockResolvedValueOnce({
+        data: { items: [{ id: 'evt-1', summary: 'Page 1 Event', start: { date: '2026-08-15' } }], nextPageToken: 'page-2' },
+      })
+      .mockResolvedValueOnce({
+        data: { items: [{ id: 'evt-2', summary: 'Page 2 Event', start: { date: '2026-08-16' } }] },
+      });
+
+    const events = await fetchAllCalendarEvents();
+
+    expect(mockEventsList).toHaveBeenCalledTimes(2);
+    expect(mockEventsList.mock.calls[1][0]).toMatchObject({ pageToken: 'page-2' });
+    expect(events.map((e) => e.id)).toEqual(['evt-1', 'evt-2']);
+  });
+
+  it('wraps and rethrows when the API call fails', async () => {
+    mockEventsList.mockRejectedValue(new Error('quota exceeded'));
+    await expect(fetchAllCalendarEvents()).rejects.toThrow('quota exceeded');
+  });
+});
+
+describe('watchCalendar (against a mocked googleapis client)', () => {
+  beforeEach(() => {
+    mockEventsWatch.mockReset();
+  });
+
+  it('returns the channel info from a realistic watch response', async () => {
+    mockEventsWatch.mockResolvedValue({
+      data: { id: 'channel-1', resourceId: 'resource-1', expiration: '1786400000000' },
+    });
+
+    const result = await watchCalendar('https://example.com/webhook', 'channel-1');
+
+    expect(result).toEqual({ channelId: 'channel-1', resourceId: 'resource-1', expiration: 1786400000000 });
+  });
+});
+
+describe('stopWatchingCalendar (against a mocked googleapis client)', () => {
+  beforeEach(() => {
+    mockChannelsStop.mockReset();
+  });
+
+  it('swallows a 404 (channel already expired/deleted)', async () => {
+    mockChannelsStop.mockRejectedValue({ code: 404 });
+    await expect(stopWatchingCalendar('channel-1', 'resource-1')).resolves.toBeUndefined();
+  });
+
+  it('rethrows a non-404 error', async () => {
+    mockChannelsStop.mockRejectedValue({ code: 500, message: 'server error' });
+    await expect(stopWatchingCalendar('channel-1', 'resource-1')).rejects.toThrow();
   });
 });

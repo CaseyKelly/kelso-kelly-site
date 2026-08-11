@@ -1,5 +1,26 @@
-import { describe, it, expect } from 'vitest';
-import { getYouTubeThumbnail, parseCategory } from './google-sheets';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import {
+  getYouTubeThumbnail,
+  parseCategory,
+  fetchVideosFromSheet,
+  getSpreadsheetLastModified,
+} from './google-sheets';
+
+// Mocks the googleapis SDK itself (not just this module's wrapper functions)
+// so a googleapis version bump that changes response shapes or error formats
+// would actually be caught here.
+const { mockValuesGet, mockDriveFilesGet } = vi.hoisted(() => ({
+  mockValuesGet: vi.fn(),
+  mockDriveFilesGet: vi.fn(),
+}));
+
+vi.mock('googleapis', () => ({
+  google: {
+    auth: { GoogleAuth: vi.fn().mockImplementation(function GoogleAuth() { return {}; }) },
+    sheets: vi.fn(() => ({ spreadsheets: { values: { get: mockValuesGet } } })),
+    drive: vi.fn(() => ({ files: { get: mockDriveFilesGet } })),
+  },
+}));
 
 describe('getYouTubeThumbnail', () => {
   it('extracts the video ID from a standard watch URL', () => {
@@ -60,5 +81,83 @@ describe('parseCategory', () => {
 
   it('returns undefined for an unrecognized category', () => {
     expect(parseCategory('behind the scenes')).toBeUndefined();
+  });
+});
+
+describe('fetchVideosFromSheet (against a mocked googleapis client)', () => {
+  beforeEach(() => {
+    mockValuesGet.mockReset();
+  });
+
+  it('parses a realistic sheet response, skipping the header row', async () => {
+    mockValuesGet.mockResolvedValue({
+      data: {
+        values: [
+          ['Title', 'YouTube URL', 'Category', 'Description', 'Order'],
+          ['Live at The Aggie', 'https://youtu.be/dQw4w9WgXcQ', 'live', 'Full set', '3'],
+        ],
+      },
+    });
+
+    const videos = await fetchVideosFromSheet('sheet-1');
+
+    expect(videos).toEqual([
+      { title: 'Live at The Aggie', youtubeUrl: 'https://youtu.be/dQw4w9WgXcQ', category: 'live', description: 'Full set', orderIndex: 3 },
+    ]);
+    expect(mockValuesGet.mock.calls[0][0]).toMatchObject({ spreadsheetId: 'sheet-1', range: 'Videos!A:E' });
+  });
+
+  it('returns an empty array when the sheet has no rows', async () => {
+    mockValuesGet.mockResolvedValue({ data: {} });
+    expect(await fetchVideosFromSheet('sheet-1')).toEqual([]);
+  });
+
+  it('skips rows missing a title or YouTube URL', async () => {
+    mockValuesGet.mockResolvedValue({
+      data: { values: [['Title', 'URL'], ['', 'https://youtu.be/a'], ['No URL Song', '']] },
+    });
+    expect(await fetchVideosFromSheet('sheet-1')).toEqual([]);
+  });
+
+  it('skips rows with a non-YouTube URL', async () => {
+    mockValuesGet.mockResolvedValue({
+      data: { values: [['Title', 'URL'], ['Some Song', 'https://vimeo.com/123']] },
+    });
+    expect(await fetchVideosFromSheet('sheet-1')).toEqual([]);
+  });
+
+  it('defaults orderIndex to the row index when the Order column is blank', async () => {
+    mockValuesGet.mockResolvedValue({
+      data: {
+        values: [
+          ['Title', 'URL'],
+          ['First', 'https://youtu.be/a'],
+          ['Second', 'https://youtu.be/b'],
+        ],
+      },
+    });
+    const videos = await fetchVideosFromSheet('sheet-1');
+    expect(videos.map((v) => v.orderIndex)).toEqual([0, 1]);
+  });
+
+  it('wraps and rethrows when the API call fails', async () => {
+    mockValuesGet.mockRejectedValue(new Error('permission denied'));
+    await expect(fetchVideosFromSheet('sheet-1')).rejects.toThrow('permission denied');
+  });
+});
+
+describe('getSpreadsheetLastModified (against a mocked googleapis client)', () => {
+  beforeEach(() => {
+    mockDriveFilesGet.mockReset();
+  });
+
+  it('returns the modifiedTime from a realistic Drive response', async () => {
+    mockDriveFilesGet.mockResolvedValue({ data: { modifiedTime: '2026-08-11T12:00:00Z' } });
+    expect(await getSpreadsheetLastModified('sheet-1')).toBe('2026-08-11T12:00:00Z');
+  });
+
+  it('returns null (rather than throwing) when the API call fails', async () => {
+    mockDriveFilesGet.mockRejectedValue(new Error('boom'));
+    expect(await getSpreadsheetLastModified('sheet-1')).toBeNull();
   });
 });

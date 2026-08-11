@@ -8,7 +8,7 @@ architecture is documented in `CLAUDE.md` and `AGENTS.md` at the repo root —
 read those first for broader context. This skill lists the things generic
 review misses because they're specific to this codebase.
 
-## Database is the source of truth is Google, not Postgres
+## Postgres, not Google, is the source of truth for pages
 
 `src/lib/sync.ts` syncs Google Calendar/Drive/Sheets into Postgres (Neon),
 and pages read only from Postgres (`src/lib/db.ts`). Flag any change that:
@@ -45,21 +45,31 @@ existing one:
   re-fetches the existing row (see `upsertEvent`) rather than assuming the
   caller doesn't need it.
 
-## Sync functions must stay defensive, not fail-fast for the whole batch
+## Sync loops handle per-item failure differently — don't assume they're uniform
 
-`syncCalendarEvents`, `syncPhotos`, and `syncVideos` in `src/lib/sync.ts` each
-loop over external items and continue past individual failures (try/catch
-per item, incrementing an `errorCount`), then call `logSync(...)` and return
-a `SyncResult`. Flag a change that:
+The three sync functions in `src/lib/sync.ts` are **not** symmetric in how
+they handle a single bad item:
 
-- Lets one bad item (e.g. a malformed calendar event, an unsupported image
-  format) throw and abort the whole sync loop, instead of catching, logging,
-  and continuing.
-- Adds deletion logic without a safety guard analogous to the one in
+- `syncPhotos` wraps each file in its own `try/catch`, incrementing
+  `errorCount` and continuing to the next file — one bad image (unsupported
+  format, optimize failure) doesn't abort the rest of the sync.
+- `syncVideos` wraps the per-item `upsertVideo` call in `try/catch` but
+  deliberately **re-throws**, failing the whole sync run on the first bad
+  row.
+- `syncCalendarEvents` has no per-item `try/catch` around `upsertEvent` at
+  all — an error there propagates straight to the function-level catch,
+  failing the whole sync.
+
+When reviewing a change to one of these loops, check that it preserves (or
+deliberately and correctly changes) that pipeline's existing
+failure-isolation behavior, and that `logSync(...)`/`SyncResult` still
+reflect the outcome accurately. Also flag:
+
+- Deletion logic that doesn't carry a safety guard analogous to the one in
   `syncCalendarEvents` (skips bulk deletion when it would remove ≥5 items
   *and* >20% of existing rows) — bulk deletes from a sync diff are usually a
   sign of a pagination or API bug, not real user intent.
-- Removes or weakens throttling (`shouldSync(...)`) without a `force`
+- Removing or weakening throttling (`shouldSync(...)`) without a `force`
   override for webhook-triggered calls — cron and webhook paths both call
   these functions and rely on throttling to avoid redundant work.
 

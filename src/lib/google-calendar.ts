@@ -32,7 +32,7 @@ export interface CalendarEvent {
  * Parse location field from Google Calendar
  * Attempts to split into venue name and address
  */
-function parseLocation(location?: string | null): { venue?: string; address?: string } {
+export function parseLocation(location?: string | null): { venue?: string; address?: string } {
   if (!location) return {};
   
   // If location contains a comma, assume first part is venue name, rest is address
@@ -54,7 +54,7 @@ function parseLocation(location?: string | null): { venue?: string; address?: st
  * Parse description to extract ticket URL if present
  * Looks for URLs in the description text
  */
-function parseDescription(description?: string | null): { description?: string; ticketUrl?: string } {
+export function parseDescription(description?: string | null): { description?: string; ticketUrl?: string } {
   if (!description) return {};
   
   // Look for ticket URL patterns
@@ -79,7 +79,7 @@ function parseDescription(description?: string | null): { description?: string; 
  * Format time from Google Calendar event
  * Converts from UTC/GMT to Mountain Time (Colorado)
  */
-function formatTime(dateTime?: string | null, date?: string | null): string {
+export function formatTime(dateTime?: string | null, date?: string | null): string {
   if (!dateTime && !date) return 'TBD';
   
   // If it's an all-day event, return generic time
@@ -103,7 +103,7 @@ function formatTime(dateTime?: string | null, date?: string | null): string {
 /**
  * Format date as YYYY-MM-DD
  */
-function formatDate(dateTime?: string | null, date?: string | null): string {
+export function formatDate(dateTime?: string | null, date?: string | null): string {
   if (date) return date;
   if (dateTime) return dateTime.split('T')[0];
   return new Date().toISOString().split('T')[0];

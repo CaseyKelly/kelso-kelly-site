@@ -10,7 +10,11 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NODE_VERSION: 20
+  # jsdom 30 (used by the component tests) requires a Node webidl util
+  # (markAsUncloneable) that GitHub's Node 20 runner image doesn't have -
+  # Node 22 is the version this suite was actually developed/verified
+  # against, so use it everywhere for consistency.
+  NODE_VERSION: 22
 
 jobs:
   lint-and-typecheck:

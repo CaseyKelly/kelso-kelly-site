@@ -68,14 +68,20 @@ describe('GET /api/webhooks/status', () => {
 
   it('formats multi-day time-until-expiration as "Xd Yh"', async () => {
     const now = Date.now();
-    mockedGetChannels.mockResolvedValue([
-      { channel_id: 'far-out', resource_type: 'calendar', resource_id: 'r1', expiration: now + 50 * 60 * 60 * 1000 },
-    ] as never);
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+    try {
+      mockedGetChannels.mockResolvedValue([
+        { channel_id: 'far-out', resource_type: 'calendar', resource_id: 'r1', expiration: now + 50 * 60 * 60 * 1000 },
+      ] as never);
 
-    const response = await GET(makeRequest({ authorization: 'Bearer super-secret' }));
-    const json = await response.json();
+      const response = await GET(makeRequest({ authorization: 'Bearer super-secret' }));
+      const json = await response.json();
 
-    expect(json.webhooks[0].time_until_expiration).toBe('2d 2h');
+      expect(json.webhooks[0].time_until_expiration).toBe('2d 2h');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('returns 500 when the DB lookup throws', async () => {

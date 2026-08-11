@@ -117,6 +117,13 @@ CRON_SECRET                       # Auth token for cron/sync endpoints
 RESEND_API_KEY                    # Resend API key for emails
 RESEND_FROM_EMAIL                 # Sender email address
 CONTACT_EMAIL                     # Recipient for contact form
+SENTRY_DSN                        # Sentry DSN, server/edge runtimes (org: caseykelly, project: sentry-casey-kelly)
+NEXT_PUBLIC_SENTRY_DSN            # Same Sentry DSN, exposed to the browser bundle
+```
+
+Required as a Vercel env var only (build-time, not needed for `npm run dev`):
+```
+SENTRY_AUTH_TOKEN                 # Sentry auth token for uploading source maps during build — create at sentry.io/settings/account/api/auth-tokens/
 ```
 
 Required as a GitHub Actions secret too (in addition to the Vercel env var above) for the Drive → YouTube upload pipeline — see `scripts/sync-drive-videos-to-youtube.js`:
@@ -198,6 +205,8 @@ Branch naming: `feature/`, `fix/`, `refactor/`, `docs/`
 - `src/lib/image-optimizer.ts` - Sharp-based image optimization
 - `src/lib/webhooks.ts` - Google webhook setup and renewal
 - `src/lib/github-actions.ts` - Triggers the YouTube sync GitHub Actions workflow via `workflow_dispatch`
+- `src/instrumentation.ts` / `src/instrumentation-client.ts` / `sentry.server.config.ts` / `sentry.edge.config.ts` - Sentry error monitoring init for server, edge, and browser runtimes
+- `src/app/global-error.tsx` - Catches React rendering errors in the root layout and reports them to Sentry
 - `db/schema.sql` - PostgreSQL database schema
 - `scripts/sync-drive-videos-to-youtube.js` - Uploads new Drive videos to YouTube, appends to the Videos sheet (run via GitHub Actions, not Vercel)
 - `scripts/get-youtube-refresh-token.js` - One-time local script to obtain the YouTube OAuth refresh token

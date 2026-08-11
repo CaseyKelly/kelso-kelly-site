@@ -1,7 +1,7 @@
 -- Fixture data for Playwright E2E tests. Applied to a disposable test
--- Postgres (see e2e/global-setup.ts) after db/schema.sql. Dates are relative
--- to CURRENT_DATE so events stay upcoming/past regardless of when the suite
--- runs.
+-- Postgres (see scripts/e2e-server.js) after db/schema.sql. Dates are
+-- relative to CURRENT_DATE so events stay upcoming/past regardless of when
+-- the suite runs.
 
 INSERT INTO events (google_event_id, title, date, time, venue, address, description, ticket_url) VALUES
   ('e2e-event-upcoming-1', 'Live at The Whiskey Barrel', CURRENT_DATE + INTERVAL '7 days', '7:00 PM', 'The Whiskey Barrel', '123 Main St, Fort Collins, CO', 'An intimate acoustic set.', 'https://example.com/tickets/1'),

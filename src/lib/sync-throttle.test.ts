@@ -29,7 +29,7 @@ describe('shouldSync', () => {
     await expect(shouldSync('calendar', 60_000)).resolves.toBe(true);
   });
 
-  it('throttles at exactly the boundary (time since sync === interval)', async () => {
+  it('does not throttle at exactly the boundary (time since sync === interval)', async () => {
     const now = Date.now();
     vi.useFakeTimers();
     vi.setSystemTime(now);

@@ -5,11 +5,11 @@
     ":semanticCommitsDisabled"
   ],
   "timezone": "America/New_York",
-  "schedule": ["before 6am on monday"],
   "labels": ["dependencies"],
+  "prHourlyLimit": 0,
+  "prConcurrentLimit": 0,
   "lockFileMaintenance": {
-    "enabled": true,
-    "schedule": ["before 6am on monday"]
+    "enabled": true
   },
   "packageRules": [
     {

@@ -7,7 +7,10 @@ test.describe('Schedule page', () => {
     await expect(page.getByRole('heading', { name: 'Upcoming Shows' })).toBeVisible();
     await expect(page.getByText('Live at The Whiskey Barrel')).toBeVisible();
     await expect(page.getByText('Summer Concert Series')).toBeVisible();
-    await expect(page.getByText('The Whiskey Barrel')).toBeVisible();
+    // Exact match: the venue name ("The Whiskey Barrel") also appears as a
+    // substring of the event title heading above, which would otherwise make
+    // this locator ambiguous.
+    await expect(page.getByText('The Whiskey Barrel', { exact: true })).toBeVisible();
 
     await expect(page.getByRole('heading', { name: 'Past Shows' })).toBeVisible();
     await expect(page.getByText('New Year Show')).toBeVisible();

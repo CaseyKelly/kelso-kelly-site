@@ -12,8 +12,11 @@ test.describe('Header navigation', () => {
       ['Contact', '/contact'],
     ];
 
+    // Scoped to the header: the footer repeats the same link labels, which
+    // would otherwise make these locators ambiguous.
+    const nav = page.getByRole('banner');
     for (const [name, path] of routes) {
-      await page.getByRole('link', { name, exact: true }).click();
+      await nav.getByRole('link', { name, exact: true }).click();
       await expect(page).toHaveURL(new RegExp(`${path}$`));
     }
   });

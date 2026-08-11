@@ -1,0 +1,130 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: 20
+
+jobs:
+  lint-and-typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      # Non-blocking: this repo has pre-existing lint errors (mostly
+      # `no-explicit-any` in files this test-coverage work didn't touch)
+      # that predate lint ever running in CI. Surfacing them here rather
+      # than silently ignoring lint entirely, without blocking every
+      # Renovate PR on unrelated debt. See PR description for the count.
+      - run: npm run lint
+        continue-on-error: true
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run test:coverage
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 14
+
+  db-integration-tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run test:integration
+
+  build:
+    runs-on: ubuntu-latest
+    env:
+      # `next build` evaluates API route modules while collecting page data,
+      # which includes src/app/api/contact/route.ts's module-load-time check
+      # for these - harmless placeholders so a build with no real secrets
+      # configured (e.g. a Renovate PR) still succeeds.
+      RESEND_API_KEY: ci-build-placeholder-resend-api-key
+      RESEND_FROM_EMAIL: ci-build@example.com
+      CONTACT_EMAIL: ci-build@example.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      CI: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14

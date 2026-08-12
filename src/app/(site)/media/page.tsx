@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import { getPhotos, getVideos } from "@/lib/db";
+import { getPhotos, getVideos, DbPhoto, DbVideo } from "@/lib/db";
 import MediaClient from "./MediaClient";
 
 export const revalidate = 3600; // 1 hour
@@ -12,8 +12,8 @@ export const metadata: Metadata = {
 };
 
 export default async function MediaPage() {
-  let photos: any[] = [];
-  let videos: any[] = [];
+  let photos: DbPhoto[] = [];
+  let videos: DbVideo[] = [];
   
   try {
     const [photosData, videosData] = await Promise.all([

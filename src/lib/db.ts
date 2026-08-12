@@ -428,6 +428,19 @@ export async function cleanupOldSyncLogs(daysToKeep = 30): Promise<number> {
   return result.length;
 }
 
+export interface DbWebhookChannel {
+  id: number;
+  channel_id: string;
+  resource_type: 'calendar' | 'drive';
+  resource_id: string;
+  expiration: number;
+  webhook_url: string | null;
+  folder_id: string | null;
+  last_renewed_at: Date | null;
+  renewal_failures: number;
+  created_at: Date;
+}
+
 export async function upsertWebhookChannel(channel: {
   channel_id: string;
   resource_type: 'calendar' | 'drive';
@@ -457,11 +470,17 @@ export async function upsertWebhookChannel(channel: {
   `;
 }
 
-export async function getWebhookChannels() {
-  return sql`
-    SELECT * FROM webhook_channels 
+export async function getWebhookChannels(): Promise<DbWebhookChannel[]> {
+  const result = await sql`
+    SELECT * FROM webhook_channels
     ORDER BY expiration ASC
   `;
+  // expiration is BIGINT - some drivers return that as a string, so
+  // normalize it to a number here rather than making every caller guard.
+  return (result as DbWebhookChannel[]).map((row) => ({
+    ...row,
+    expiration: Number(row.expiration),
+  }));
 }
 
 export async function deleteWebhookChannel(channelId: string) {

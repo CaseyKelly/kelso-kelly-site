@@ -32,9 +32,9 @@ export async function POST(req: NextRequest) {
       paths: pathsToRevalidate,
       now: Date.now(),
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error('Revalidate error:', err);
-    return new NextResponse(err.message, { status: 500 });
+    return new NextResponse(`${err}`, { status: 500 });
   }
 }
 
@@ -59,8 +59,8 @@ export async function GET(req: NextRequest) {
       path,
       now: Date.now(),
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error('Revalidate error:', err);
-    return new NextResponse(err.message, { status: 500 });
+    return new NextResponse(`${err}`, { status: 500 });
   }
 }

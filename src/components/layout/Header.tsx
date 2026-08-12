@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { siteConfig } from "@/data/site-config";
 
 const navigation = [
   { name: "Home", href: "/" },

@@ -8,7 +8,7 @@ export const maxDuration = 60; // 60 seconds max execution time
  * POST /api/sync-calendar
  * Manually trigger a calendar sync
  */
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     // Optional: Add authentication here
     // const authHeader = request.headers.get('authorization');

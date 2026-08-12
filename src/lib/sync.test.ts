@@ -166,7 +166,7 @@ describe('syncCalendarEvents', () => {
     const result = await syncCalendarEvents();
 
     expect(mocked.deleteEvent).toHaveBeenCalledTimes(3);
-    expect(result.details.deleted).toBe(3);
+    expect(result.details!.deleted).toBe(3);
   });
 
   it('skips deletion when >=5 events AND >20% would be deleted (safety guard)', async () => {
@@ -181,7 +181,7 @@ describe('syncCalendarEvents', () => {
     const result = await syncCalendarEvents();
 
     expect(mocked.deleteEvent).not.toHaveBeenCalled();
-    expect(result.details.deleted).toBe(0);
+    expect(result.details!.deleted).toBe(0);
     expect(result.message).toContain('Successfully synced');
   });
 
@@ -197,7 +197,7 @@ describe('syncCalendarEvents', () => {
     const result = await syncCalendarEvents();
 
     expect(mocked.deleteEvent).toHaveBeenCalledTimes(5);
-    expect(result.details.deleted).toBe(5);
+    expect(result.details!.deleted).toBe(5);
   });
 
   it('allows deleting all events on a small cleanup even at 100% (count < 5 overrides percentage)', async () => {
@@ -207,7 +207,7 @@ describe('syncCalendarEvents', () => {
     const result = await syncCalendarEvents();
 
     expect(mocked.deleteEvent).toHaveBeenCalledWith('only-event');
-    expect(result.details.deleted).toBe(1);
+    expect(result.details!.deleted).toBe(1);
   });
 
   it('does not attempt any deletion on the very first sync (no existing events)', async () => {
@@ -275,7 +275,7 @@ describe('syncPhotos', () => {
     expect(mocked.upsertPhoto).toHaveBeenCalledWith(
       expect.objectContaining({ optimized_url: 'https://blob.example.com/new-photo.webp' })
     );
-    expect(result.details.created).toBe(1);
+    expect(result.details!.created).toBe(1);
     expect(result.success).toBe(true);
   });
 
@@ -287,8 +287,8 @@ describe('syncPhotos', () => {
     const result = await syncPhotos();
 
     expect(mocked.downloadFile).not.toHaveBeenCalled();
-    expect(result.details.heicSkipped).toBe(1);
-    expect(result.details.errors).toBe(0);
+    expect(result.details!.heicSkipped).toBe(1);
+    expect(result.details!.errors).toBe(0);
     expect(result.success).toBe(true);
   });
 
@@ -301,8 +301,8 @@ describe('syncPhotos', () => {
 
     const result = await syncPhotos();
 
-    expect(result.details.heicSkipped).toBe(1);
-    expect(result.details.errors).toBe(0);
+    expect(result.details!.heicSkipped).toBe(1);
+    expect(result.details!.errors).toBe(0);
     expect(result.success).toBe(true);
   });
 
@@ -319,8 +319,8 @@ describe('syncPhotos', () => {
 
     const result = await syncPhotos();
 
-    expect(result.details.errors).toBe(1);
-    expect(result.details.created).toBe(1);
+    expect(result.details!.errors).toBe(1);
+    expect(result.details!.created).toBe(1);
     expect(result.success).toBe(false); // errorCount > 0
   });
 
@@ -353,7 +353,7 @@ describe('syncPhotos', () => {
         height: 480,
       })
     );
-    expect(result.details.updated).toBe(1);
+    expect(result.details!.updated).toBe(1);
   });
 
   it('deletes DB photos missing from Drive with no safety guard, even for a large proportion', async () => {
@@ -365,7 +365,7 @@ describe('syncPhotos', () => {
     const result = await syncPhotos();
 
     expect(mocked.deletePhoto).toHaveBeenCalledTimes(4);
-    expect(result.details.deleted).toBe(4);
+    expect(result.details!.deleted).toBe(4);
   });
 });
 
@@ -416,6 +416,6 @@ describe('syncVideos', () => {
     const result = await syncVideos();
 
     expect(mocked.sql).toHaveBeenCalled();
-    expect(result.details.deleted).toBe(1);
+    expect(result.details!.deleted).toBe(1);
   });
 });

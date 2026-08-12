@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
  * GET /api/webhook-calendar
  * Health check endpoint
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   return NextResponse.json({
     endpoint: '/api/webhook-calendar',
     description: 'Google Calendar webhook receiver',

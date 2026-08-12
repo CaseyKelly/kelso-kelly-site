@@ -28,13 +28,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
-      # Non-blocking: this repo has pre-existing lint errors (mostly
-      # `no-explicit-any` in files this test-coverage work didn't touch)
-      # that predate lint ever running in CI. Surfacing them here rather
-      # than silently ignoring lint entirely, without blocking every
-      # Renovate PR on unrelated debt. See PR description for the count.
       - run: npm run lint
-        continue-on-error: true
 
   unit-tests:
     runs-on: ubuntu-latest

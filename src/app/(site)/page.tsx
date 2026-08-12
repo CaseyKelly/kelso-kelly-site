@@ -1,14 +1,13 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Calendar, Mail, MapPin, ArrowRight } from "lucide-react";
+import { Mail, MapPin, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
 import { ParallaxHeroImage } from "@/components/ui/ParallaxHeroImage";
 import { JsonLd } from "@/components/JsonLd";
 import { siteConfig } from "@/data/site-config";
-import { getUpcomingEvents, getVideos } from "@/lib/db";
-import { formatDate } from "@/lib/utils";
+import { getUpcomingEvents, getVideos, DbEvent, DbVideo } from "@/lib/db";
 
 export const revalidate = 60;
 
@@ -48,8 +47,8 @@ function parseEventDate(dateStr: string): { month: string; day: string } {
 }
 
 export default async function HomePage() {
-  let upcomingEvents: any[] = [];
-  let videos: any[] = [];
+  let upcomingEvents: DbEvent[] = [];
+  let videos: DbVideo[] = [];
   try {
     upcomingEvents = await getUpcomingEvents();
   } catch (error) {
@@ -221,7 +220,7 @@ export default async function HomePage() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {displayEvents.map((event: any) => {
+            {displayEvents.map((event: DbEvent) => {
               const { month, day } = parseEventDate(event.date);
               return (
                 <Card key={event.id} hover>

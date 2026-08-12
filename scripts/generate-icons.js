@@ -6,18 +6,9 @@
  */
 
 const sharp = require('sharp');
-const fs = require('fs');
 
 async function generateIcons() {
   try {
-    // SVG for Music2 icon (lucide-react music-2)
-    const musicIconSvg = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="8" cy="18" r="4"/>
-        <path d="M12 18V2l7 4"/>
-      </svg>
-    `;
-
     // Create 512x512 icon with gradient background (for favicon and OG)
     const iconSvg = `
       <svg width="512" height="512" xmlns="http://www.w3.org/2000/svg">

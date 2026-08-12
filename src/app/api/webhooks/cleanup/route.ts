@@ -82,7 +82,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
  * GET /api/webhooks/cleanup
  * Get information about this endpoint
  */
-export async function GET(request: NextRequest): Promise<NextResponse> {
+export async function GET(_request: NextRequest): Promise<NextResponse> {
   return NextResponse.json({
     endpoint: '/api/webhooks/cleanup',
     method: 'POST',

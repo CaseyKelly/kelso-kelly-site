@@ -20,7 +20,6 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('Running Drive webhook renewal cron...');
-    const baseUrl = 'https://kelso-kelly-site.vercel.app';
     const channels = await getWebhookChannels();
     const now = Date.now();
     const renewalThreshold = 18 * 60 * 60 * 1000; // 18 hours (75% of 24h lifespan)

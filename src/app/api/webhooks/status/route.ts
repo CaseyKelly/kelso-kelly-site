@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getWebhookChannels } from '@/lib/db';
+import { getWebhookChannels, DbWebhookChannel } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const now = Date.now();
     const renewalThreshold = 24 * 60 * 60 * 1000; // 24 hours
 
-    const webhooks: WebhookStatus[] = channels.map((channel: any) => {
+    const webhooks: WebhookStatus[] = channels.map((channel: DbWebhookChannel) => {
       // Ensure expiration is a valid number
       const expiration = typeof channel.expiration === 'number' 
         ? channel.expiration 

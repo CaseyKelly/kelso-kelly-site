@@ -2,9 +2,7 @@ import { fetchAllCalendarEvents } from './google-calendar';
 import {
   listImageFilesInFolder,
   downloadFile,
-  getCategoryFromFolderName,
   cleanFilenameForTitle,
-  findFolderByName
 } from './google-drive';
 import { fetchVideosFromSheetWithThumbnails } from './google-sheets';
 import {
@@ -12,14 +10,9 @@ import {
   upsertEvent,
   upsertPhoto,
   upsertVideo,
-  deleteVideo,
   deletePhoto,
   deleteEvent,
-  deleteAllVideos,
   logSync,
-  getEvents,
-  getPhotos,
-  getVideos,
   getEventIds,
   getPhotoIds,
   getPhotoByDriveId,
@@ -32,7 +25,7 @@ import { shouldSync } from './sync-throttle';
 export interface SyncResult {
   success: boolean;
   message: string;
-  details?: any;
+  details?: Record<string, unknown>;
 }
 
 /**

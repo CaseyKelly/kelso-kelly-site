@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { JsonLd } from "@/components/JsonLd";
-import { getUpcomingEvents, getPastEvents } from "@/lib/db";
+import { getUpcomingEvents, getPastEvents, DbEvent } from "@/lib/db";
 import { formatDate } from "@/lib/utils";
 
 export const revalidate = 3600;
@@ -24,7 +24,7 @@ function parseEventDate(dateStr: string): { month: string; day: string } {
   };
 }
 
-function EventCard({ event, isPast = false }: { event: any; isPast?: boolean }) {
+function EventCard({ event, isPast = false }: { event: DbEvent; isPast?: boolean }) {
   const { month, day } = parseEventDate(event.date);
   return (
     <Card hover={!isPast} className={isPast ? "opacity-50" : ""}>
@@ -88,8 +88,8 @@ function EventCard({ event, isPast = false }: { event: any; isPast?: boolean }) 
 }
 
 export default async function SchedulePage() {
-  let upcomingEvents: any[] = [];
-  let pastEvents: any[] = [];
+  let upcomingEvents: DbEvent[] = [];
+  let pastEvents: DbEvent[] = [];
 
   try {
     const [upcoming, past] = await Promise.all([
@@ -106,7 +106,7 @@ export default async function SchedulePage() {
     ? {
         "@context": "https://schema.org",
         "@type": "ItemList",
-        itemListElement: upcomingEvents.map((event: any, index: number) => ({
+        itemListElement: upcomingEvents.map((event: DbEvent, index: number) => ({
           "@type": "ListItem",
           position: index + 1,
           item: {
@@ -150,7 +150,7 @@ export default async function SchedulePage() {
 
         {upcomingEvents.length > 0 ? (
           <div className="space-y-4">
-            {upcomingEvents.map((event: any) => (
+            {upcomingEvents.map((event: DbEvent) => (
               <EventCard key={event.id} event={event} />
             ))}
           </div>
@@ -170,7 +170,7 @@ export default async function SchedulePage() {
           <div className="mt-16">
             <h2 className="font-display text-2xl font-bold text-white mb-8">Past Shows</h2>
             <div className="space-y-4">
-              {pastEvents.map((event: any) => (
+              {pastEvents.map((event: DbEvent) => (
                 <EventCard key={event.id} event={event} isPast />
               ))}
             </div>

@@ -8,7 +8,7 @@ export const maxDuration = 300; // 5 minutes max execution time (photos can take
  * POST /api/sync-photos
  * Manually trigger a photo sync from Google Drive
  */
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     // Optional: Add authentication here
     // const authHeader = request.headers.get('authorization');

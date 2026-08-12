@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
  * GET /api/webhooks/setup
  * Get setup instructions
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   return NextResponse.json({
     endpoint: '/api/webhooks/setup',
     method: 'POST',

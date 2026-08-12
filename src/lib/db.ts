@@ -470,12 +470,17 @@ export async function upsertWebhookChannel(channel: {
   `;
 }
 
-export async function getWebhookChannels() {
+export async function getWebhookChannels(): Promise<DbWebhookChannel[]> {
   const result = await sql`
     SELECT * FROM webhook_channels
     ORDER BY expiration ASC
   `;
-  return result as DbWebhookChannel[];
+  // expiration is BIGINT - some drivers return that as a string, so
+  // normalize it to a number here rather than making every caller guard.
+  return (result as DbWebhookChannel[]).map((row) => ({
+    ...row,
+    expiration: Number(row.expiration),
+  }));
 }
 
 export async function deleteWebhookChannel(channelId: string) {

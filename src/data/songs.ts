@@ -60,7 +60,7 @@ export const songs: Song[] = [
   { id: "50", title: "The Way You Make Me Feel", artist: "Michael Jackson", genre: "rnb" },
 
   // Classic/Standards
-  { id: "51", title: "Walking In Memphis", artist: "Mark Cohn/Lonestar", genre: "classic" },
+  { id: "51", title: "Walking In Memphis", artist: "Marc Cohn/Lonestar", genre: "classic" },
   { id: "52", title: "Brandy", artist: "Looking Glass", genre: "classic" },
   { id: "53", title: "Build Me Up Buttercup", artist: "Foundations", genre: "classic" },
   { id: "54", title: "Shame On The Moon", artist: "Bob Seger", genre: "classic" },

@@ -14,14 +14,6 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
   ]),
   {
-    // eslint-plugin-react's `version: "detect"` (set by eslint-config-next)
-    // calls context.getFilename(), which ESLint 10 removed - pin the React
-    // major explicitly so the plugin never takes the detection path.
-    settings: {
-      react: { version: "19" },
-    },
-  },
-  {
     // Plain CommonJS Node scripts (run directly via `node`, not bundled by
     // Next.js) - require() is the correct import style here, not an issue
     // the TS-oriented no-require-imports rule should flag.

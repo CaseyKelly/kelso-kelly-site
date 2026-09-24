@@ -28,6 +28,11 @@
     {
       "matchPackageNames": ["next", "eslint-config-next"],
       "groupName": "next.js"
+    },
+    {
+      "description": "typescript-eslint (via eslint-config-next) only supports TypeScript <6.1 and throws on TS 7 - lift once https://github.com/typescript-eslint/typescript-eslint/issues/10940 ships",
+      "matchPackageNames": ["typescript"],
+      "allowedVersions": "<6.1.0"
     }
   ]
 }

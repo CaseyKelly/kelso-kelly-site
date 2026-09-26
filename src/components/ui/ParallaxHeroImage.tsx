@@ -3,6 +3,9 @@
 import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 
+// Image moves at half the scroll speed; keep in sync with .hero-parallax in globals.css
+const PARALLAX_SPEED = 0.5
+
 interface ParallaxHeroImageProps {
   src: string
   alt: string
@@ -23,20 +26,36 @@ export function ParallaxHeroImage({ src, alt }: ParallaxHeroImageProps) {
   }, [])
 
   useEffect(() => {
+    // Browsers with scroll-driven animations run the parallax from CSS
+    // (.hero-parallax in globals.css) on the compositor thread, in sync with
+    // native scrolling. A JS scroll listener lags a frame behind touch
+    // scrolling on mobile, which makes the image visibly jitter.
+    if (CSS.supports('animation-timeline: scroll()')) return
+
+    // Without CSS support, skip the effect on any device with touch input
+    // (including hybrid laptops/tablets), where the JS version shakes, and
+    // for users who prefer reduced motion.
+    if (window.matchMedia('(any-pointer: coarse), (prefers-reduced-motion: reduce)').matches) return
+
+    let frame = 0
     const handleScroll = () => {
-      if (!imageRef.current) return
+      if (frame) return
+      frame = requestAnimationFrame(() => {
+        frame = 0
+        if (!imageRef.current) return
 
-      const scrolled = window.scrollY
-      const parallaxSpeed = 0.5 // Adjust this value for more/less parallax effect
-
-      // Apply transform to create parallax effect
-      imageRef.current.style.transform = `translateY(${scrolled * parallaxSpeed}px)`
+        // Clamp so the transform stops updating once the hero is off screen
+        const scrolled = Math.min(Math.max(window.scrollY, 0), window.innerHeight)
+        imageRef.current.style.transform = `translateY(${scrolled * PARALLAX_SPEED}px)`
+      })
     }
 
+    handleScroll()
     window.addEventListener('scroll', handleScroll, { passive: true })
 
     return () => {
       window.removeEventListener('scroll', handleScroll)
+      cancelAnimationFrame(frame)
     }
   }, [])
 
@@ -44,7 +63,7 @@ export function ParallaxHeroImage({ src, alt }: ParallaxHeroImageProps) {
     <div className="absolute inset-0">
       <div
         ref={imageRef}
-        className="absolute inset-0 will-change-transform"
+        className="hero-parallax absolute inset-0 will-change-transform"
         style={{
           top: '5%',
           height: '120%',

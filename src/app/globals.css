@@ -82,3 +82,29 @@ html {
 .hero-image {
   animation: hero-zoom 20s ease-out infinite alternate;
 }
+
+/* Hero parallax: image moves at half the scroll speed (PARALLAX_SPEED in
+   ParallaxHeroImage.tsx) over the first viewport height of scroll. Driven by
+   the scroll timeline so it runs on the compositor and stays smooth on mobile. */
+@keyframes hero-parallax {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(50vh);
+  }
+}
+
+@supports (animation-timeline: scroll()) {
+  .hero-parallax {
+    animation: hero-parallax linear both;
+    animation-timeline: scroll(root block);
+    animation-range: 0 100vh;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-parallax {
+    animation: none;
+  }
+}

@@ -32,9 +32,10 @@ export function ParallaxHeroImage({ src, alt }: ParallaxHeroImageProps) {
     // scrolling on mobile, which makes the image visibly jitter.
     if (CSS.supports('animation-timeline: scroll()')) return
 
-    // Without CSS support, skip the effect on touch devices (where the JS
-    // version shakes) and for users who prefer reduced motion.
-    if (window.matchMedia('(pointer: coarse), (prefers-reduced-motion: reduce)').matches) return
+    // Without CSS support, skip the effect on any device with touch input
+    // (including hybrid laptops/tablets), where the JS version shakes, and
+    // for users who prefer reduced motion.
+    if (window.matchMedia('(any-pointer: coarse), (prefers-reduced-motion: reduce)').matches) return
 
     let frame = 0
     const handleScroll = () => {

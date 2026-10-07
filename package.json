@@ -23,7 +23,7 @@
     "@vercel/analytics": "^2.0.1",
     "@vercel/blob": "^2.0.0",
     "clsx": "^2.1.1",
-    "googleapis": "^182.0.0",
+    "googleapis": "^183.0.0",
     "lucide-react": "^1.0.0",
     "next": "16.3.8",
     "react": "19.3.0",

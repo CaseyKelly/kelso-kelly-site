@@ -6,6 +6,7 @@ import {
   upsertVideo,
   getEventIds,
   getPhotoIds,
+  getPhotoImageDataByDriveId,
   getVideoUrls,
   getUpcomingEvents,
   getPastEvents,
@@ -138,6 +139,28 @@ describe('id/URL set getters used for sync diffing', () => {
     expect(await getEventIds()).toEqual(new Set(['evt-a']));
     expect(await getPhotoIds()).toEqual(new Set(['photo-a']));
     expect(await getVideoUrls()).toEqual(new Set(['https://youtu.be/a']));
+  });
+
+  it('getPhotoImageDataByDriveId maps each Drive ID to its stored image data', async () => {
+    await upsertPhoto({
+      google_drive_id: 'photo-a',
+      title: 'A',
+      category: 'performance',
+      optimized_url: 'https://blob.example.com/a.webp',
+      width: 1920,
+      height: 1080,
+    });
+    await upsertPhoto({
+      google_drive_id: 'photo-b',
+      title: 'B',
+      category: 'performance',
+      optimized_url: 'https://blob.example.com/b.webp',
+    });
+
+    expect(await getPhotoImageDataByDriveId()).toEqual(new Map([
+      ['photo-a', { optimized_url: 'https://blob.example.com/a.webp', width: 1920, height: 1080 }],
+      ['photo-b', { optimized_url: 'https://blob.example.com/b.webp', width: null, height: null }],
+    ]));
   });
 });
 

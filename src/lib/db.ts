@@ -402,10 +402,7 @@ export async function getLastSuccessfulSync(syncType: DbSyncLog['sync_type']): P
 }
 
 /**
- * Get a single photo by its Google Drive ID.
- * Used for efficient sync operations when only one photo's data is needed.
- * @param driveId - The Google Drive file ID
- * @returns The photo record, or null if not found
+ * Stored image data for a photo, preserved when sync only updates metadata.
  */
 export type PhotoImageData = Pick<DbPhoto, 'optimized_url' | 'width' | 'height'>;
 

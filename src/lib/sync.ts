@@ -14,8 +14,7 @@ import {
   deleteEvent,
   logSync,
   getEventIds,
-  getPhotoIds,
-  getPhotoByDriveId,
+  getPhotoImageDataByDriveId,
   getVideoUrls
 } from './db';
 import { put } from '@vercel/blob';
@@ -210,9 +209,9 @@ export async function syncPhotos(force = false): Promise<SyncResult> {
     console.log(`Found ${files.length} images in Drive folder`);
     console.log('Files:', files.map(f => ({ id: f.id, name: f.name })));
 
-    // Get only existing photo IDs (optimized query)
-    const existingPhotoIds = await getPhotoIds();
-    console.log(`Found ${existingPhotoIds.size} existing photos in database`);
+    // Load existing photos' image data in a single query (avoids an N+1 lookup per file)
+    const existingPhotos = await getPhotoImageDataByDriveId();
+    console.log(`Found ${existingPhotos.size} existing photos in database`);
     
     // Create a Set of Drive file IDs for efficient lookup
     const driveFileIds = new Set(files.map(f => f.id));
@@ -221,17 +220,9 @@ export async function syncPhotos(force = false): Promise<SyncResult> {
       const file = files[i];
 
       try {
-        // Check if photo already exists
-        const photoExists = existingPhotoIds.has(file.id);
+        const existingPhoto = existingPhotos.get(file.id);
 
-        if (photoExists) {
-          // Photo exists - fetch only this photo's data for metadata update
-          const existingPhoto = await getPhotoByDriveId(file.id);
-          if (!existingPhoto) {
-            console.error(`Photo ${file.id} not found in database despite being in ID set`);
-            continue;
-          }
-
+        if (existingPhoto) {
           const title = cleanFilenameForTitle(file.name);
           const altText = title;
 
@@ -324,7 +315,7 @@ export async function syncPhotos(force = false): Promise<SyncResult> {
     
     // Delete photos that exist in database but not in Drive
     console.log('Checking for photos to delete...');
-    for (const dbPhotoId of existingPhotoIds) {
+    for (const dbPhotoId of existingPhotos.keys()) {
       if (!driveFileIds.has(dbPhotoId)) {
         try {
           console.log(`Deleting photo no longer in Drive: ${dbPhotoId}`);

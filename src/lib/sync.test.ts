@@ -13,8 +13,7 @@ import {
   deleteEvent,
   logSync,
   getEventIds,
-  getPhotoIds,
-  getPhotoByDriveId,
+  getPhotoImageDataByDriveId,
   getVideoUrls,
 } from './db';
 import { put } from '@vercel/blob';
@@ -55,8 +54,7 @@ vi.mock('./db', () => ({
   getPhotos: vi.fn(),
   getVideos: vi.fn(),
   getEventIds: vi.fn(),
-  getPhotoIds: vi.fn(),
-  getPhotoByDriveId: vi.fn(),
+  getPhotoImageDataByDriveId: vi.fn(),
   getVideoUrls: vi.fn(),
 }));
 vi.mock('@vercel/blob', () => ({
@@ -84,8 +82,7 @@ const mocked = {
   deleteEvent: vi.mocked(deleteEvent),
   logSync: vi.mocked(logSync),
   getEventIds: vi.mocked(getEventIds),
-  getPhotoIds: vi.mocked(getPhotoIds),
-  getPhotoByDriveId: vi.mocked(getPhotoByDriveId),
+  getPhotoImageDataByDriveId: vi.mocked(getPhotoImageDataByDriveId),
   getVideoUrls: vi.mocked(getVideoUrls),
   put: vi.mocked(put),
   shouldSync: vi.mocked(shouldSync),
@@ -255,7 +252,7 @@ describe('syncPhotos', () => {
 
   it('downloads, optimizes, and uploads a new (non-HEIC) photo', async () => {
     mocked.listImageFilesInFolder.mockResolvedValue([driveFile('new-photo')]);
-    mocked.getPhotoIds.mockResolvedValue(new Set());
+    mocked.getPhotoImageDataByDriveId.mockResolvedValue(new Map());
     mocked.isHeicFile.mockReturnValue(false);
     mocked.downloadFile.mockResolvedValue(Buffer.from('fake-image-bytes'));
     mocked.optimizeImage.mockResolvedValue({
@@ -281,7 +278,7 @@ describe('syncPhotos', () => {
 
   it('skips HEIC files without downloading, and does not count them as errors', async () => {
     mocked.listImageFilesInFolder.mockResolvedValue([driveFile('heic-photo', { name: 'heic-photo.heic' })]);
-    mocked.getPhotoIds.mockResolvedValue(new Set());
+    mocked.getPhotoImageDataByDriveId.mockResolvedValue(new Map());
     mocked.isHeicFile.mockReturnValue(true);
 
     const result = await syncPhotos();
@@ -294,7 +291,7 @@ describe('syncPhotos', () => {
 
   it('treats UnsupportedFormatError thrown during optimization as a HEIC skip, not an error', async () => {
     mocked.listImageFilesInFolder.mockResolvedValue([driveFile('bad-format')]);
-    mocked.getPhotoIds.mockResolvedValue(new Set());
+    mocked.getPhotoImageDataByDriveId.mockResolvedValue(new Map());
     mocked.isHeicFile.mockReturnValue(false);
     mocked.downloadFile.mockResolvedValue(Buffer.from('bytes'));
     mocked.optimizeImage.mockRejectedValue(new UnsupportedFormatError('HEIC'));
@@ -308,7 +305,7 @@ describe('syncPhotos', () => {
 
   it('counts a generic processing error and continues with the remaining files', async () => {
     mocked.listImageFilesInFolder.mockResolvedValue([driveFile('broken'), driveFile('fine')]);
-    mocked.getPhotoIds.mockResolvedValue(new Set());
+    mocked.getPhotoImageDataByDriveId.mockResolvedValue(new Map());
     mocked.isHeicFile.mockReturnValue(false);
     mocked.downloadFile.mockResolvedValueOnce(Buffer.from('bad')).mockResolvedValueOnce(Buffer.from('good'));
     mocked.optimizeImage
@@ -326,20 +323,9 @@ describe('syncPhotos', () => {
 
   it('updates metadata only for an existing photo, preserving its stored image data', async () => {
     mocked.listImageFilesInFolder.mockResolvedValue([driveFile('existing-photo')]);
-    mocked.getPhotoIds.mockResolvedValue(new Set(['existing-photo']));
-    mocked.getPhotoByDriveId.mockResolvedValue({
-      id: 1,
-      google_drive_id: 'existing-photo',
-      title: 'Old Title',
-      category: 'performance',
-      alt_text: 'Old Title',
-      optimized_url: 'https://blob.example.com/existing.webp',
-      width: 640,
-      height: 480,
-      order_index: 0,
-      created_at: new Date(),
-      updated_at: new Date(),
-    });
+    mocked.getPhotoImageDataByDriveId.mockResolvedValue(new Map([
+      ['existing-photo', { optimized_url: 'https://blob.example.com/existing.webp', width: 640, height: 480 }],
+    ]));
     mocked.upsertPhoto.mockResolvedValue({ action: 'updated', photo: {} as never });
 
     const result = await syncPhotos();
@@ -360,7 +346,9 @@ describe('syncPhotos', () => {
     // Documents current behavior: unlike calendar sync, photo deletion has no
     // count/percentage threshold - all 4 of 4 existing photos get deleted here.
     mocked.listImageFilesInFolder.mockResolvedValue([]);
-    mocked.getPhotoIds.mockResolvedValue(new Set(['p1', 'p2', 'p3', 'p4']));
+    mocked.getPhotoImageDataByDriveId.mockResolvedValue(new Map(
+      ['p1', 'p2', 'p3', 'p4'].map(id => [id, { optimized_url: `https://blob.example.com/${id}.webp`, width: 1, height: 1 }])
+    ));
 
     const result = await syncPhotos();
 

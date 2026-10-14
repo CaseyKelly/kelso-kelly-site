@@ -407,11 +407,22 @@ export async function getLastSuccessfulSync(syncType: DbSyncLog['sync_type']): P
  * @param driveId - The Google Drive file ID
  * @returns The photo record, or null if not found
  */
-export async function getPhotoByDriveId(driveId: string): Promise<DbPhoto | null> {
-  const result = await sql`
-    SELECT * FROM photos WHERE google_drive_id = ${driveId}
-  `;
-  return result.length > 0 ? result[0] as DbPhoto : null;
+export type PhotoImageData = Pick<DbPhoto, 'optimized_url' | 'width' | 'height'>;
+
+/**
+ * Get the stored image data for every photo, keyed by Drive file ID.
+ * Fetched in one query so photo sync doesn't issue a lookup per existing photo (N+1).
+ */
+export async function getPhotoImageDataByDriveId(): Promise<Map<string, PhotoImageData>> {
+  const result = await sql`SELECT google_drive_id, optimized_url, width, height FROM photos`;
+  return new Map(result.map(r => [
+    r.google_drive_id as string,
+    {
+      optimized_url: r.optimized_url as string,
+      width: r.width as number | null,
+      height: r.height as number | null,
+    },
+  ]));
 }
 
 /**

@@ -423,6 +423,48 @@ export async function getPhotoImageDataByDriveId(): Promise<Map<string, PhotoIma
 }
 
 /**
+ * Update metadata (title, category, alt text, order) for existing photos in a
+ * single query, so photo sync doesn't issue one upsert per photo (N+1).
+ * Stored image data (optimized_url, width, height) is left untouched. Rows whose
+ * metadata hasn't changed are skipped, so their updated_at isn't bumped.
+ * @returns The Drive IDs of the photos that were actually updated
+ */
+export async function updatePhotosMetadata(photos: {
+  google_drive_id: string;
+  title: string;
+  category: DbPhoto['category'];
+  alt_text?: string | null;
+  order_index: number;
+}[]): Promise<Set<string>> {
+  if (photos.length === 0) return new Set();
+
+  const result = await sql`
+    UPDATE photos SET
+      title = data.title,
+      category = data.category,
+      alt_text = data.alt_text,
+      order_index = data.order_index,
+      updated_at = NOW()
+    FROM UNNEST(
+      ${photos.map(p => p.google_drive_id)}::text[],
+      ${photos.map(p => p.title)}::text[],
+      ${photos.map(p => p.category)}::text[],
+      ${photos.map(p => p.alt_text ?? null)}::text[],
+      ${photos.map(p => p.order_index)}::int[]
+    ) AS data(google_drive_id, title, category, alt_text, order_index)
+    WHERE photos.google_drive_id = data.google_drive_id AND (
+      photos.title IS DISTINCT FROM data.title OR
+      photos.category IS DISTINCT FROM data.category OR
+      photos.alt_text IS DISTINCT FROM data.alt_text OR
+      photos.order_index IS DISTINCT FROM data.order_index
+    )
+    RETURNING photos.google_drive_id
+  `;
+
+  return new Set(result.map(r => r.google_drive_id as string));
+}
+
+/**
  * Clean up old sync logs to prevent unbounded table growth.
  * @param daysToKeep - Number of days of logs to retain (default: 30)
  * @returns Number of deleted log entries

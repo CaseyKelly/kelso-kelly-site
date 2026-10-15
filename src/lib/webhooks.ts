@@ -61,6 +61,30 @@ export async function setupDriveWebhook(webhookUrl: string, folderId: string) {
 }
 
 /**
+ * The Drive folders that should always have an active webhook, based on env config.
+ * Used by the Drive renewal cron to re-create any channel that has gone missing.
+ */
+export function getExpectedDriveWebhooks(baseUrl: string): { webhookUrl: string; folderId: string }[] {
+  const expected: { webhookUrl: string; folderId: string }[] = [];
+
+  if (process.env.GOOGLE_DRIVE_PHOTOS_FOLDER_ID) {
+    expected.push({
+      webhookUrl: `${baseUrl}/api/webhook-drive`,
+      folderId: process.env.GOOGLE_DRIVE_PHOTOS_FOLDER_ID,
+    });
+  }
+
+  if (process.env.GOOGLE_DRIVE_VIDEOS_FOLDER_ID) {
+    expected.push({
+      webhookUrl: `${baseUrl}/api/webhook-drive-videos`,
+      folderId: process.env.GOOGLE_DRIVE_VIDEOS_FOLDER_ID,
+    });
+  }
+
+  return expected;
+}
+
+/**
  * Renew all webhooks that are expiring soon
  * Should be called by a cron job
  * Skips Drive webhooks as they have a dedicated renewal cron

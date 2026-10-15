@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renewWebhooks, cleanupAllWebhooks, initializeWebhooks } from './webhooks';
+import { renewWebhooks, cleanupAllWebhooks, initializeWebhooks, getExpectedDriveWebhooks } from './webhooks';
 import { watchCalendar, stopWatchingCalendar } from './google-calendar';
 import { watchFolder, stopWatchingFolder } from './google-drive';
 import { upsertWebhookChannel, getWebhookChannels, deleteWebhookChannel } from './db';
@@ -206,5 +206,30 @@ describe('initializeWebhooks', () => {
 
     expect(mocked.deleteWebhookChannel).toHaveBeenCalledWith('stale');
     expect(result.cleanup.deleted).toBe(1);
+  });
+});
+
+describe('getExpectedDriveWebhooks', () => {
+  beforeEach(() => {
+    delete process.env.GOOGLE_DRIVE_PHOTOS_FOLDER_ID;
+    delete process.env.GOOGLE_DRIVE_VIDEOS_FOLDER_ID;
+  });
+
+  it('lists a webhook for each configured Drive folder', () => {
+    process.env.GOOGLE_DRIVE_PHOTOS_FOLDER_ID = 'photos-folder';
+    process.env.GOOGLE_DRIVE_VIDEOS_FOLDER_ID = 'videos-folder';
+
+    expect(getExpectedDriveWebhooks('https://example.com')).toEqual([
+      { webhookUrl: 'https://example.com/api/webhook-drive', folderId: 'photos-folder' },
+      { webhookUrl: 'https://example.com/api/webhook-drive-videos', folderId: 'videos-folder' },
+    ]);
+  });
+
+  it('omits folders that are not configured', () => {
+    process.env.GOOGLE_DRIVE_PHOTOS_FOLDER_ID = 'photos-folder';
+
+    expect(getExpectedDriveWebhooks('https://example.com')).toEqual([
+      { webhookUrl: 'https://example.com/api/webhook-drive', folderId: 'photos-folder' },
+    ]);
   });
 });

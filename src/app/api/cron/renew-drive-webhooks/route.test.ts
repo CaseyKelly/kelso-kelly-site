@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { GET } from './route';
 import { getWebhookChannels, deleteWebhookChannel } from '@/lib/db';
-import { setupDriveWebhook } from '@/lib/webhooks';
+import { setupDriveWebhook, getExpectedDriveWebhooks } from '@/lib/webhooks';
 import { stopWatchingFolder } from '@/lib/google-drive';
 import { sendWebhookAlert } from '@/lib/notifications';
 
@@ -12,6 +12,7 @@ vi.mock('@/lib/db', () => ({
 }));
 vi.mock('@/lib/webhooks', () => ({
   setupDriveWebhook: vi.fn(),
+  getExpectedDriveWebhooks: vi.fn(),
 }));
 vi.mock('@/lib/google-drive', () => ({
   stopWatchingFolder: vi.fn(),
@@ -23,6 +24,7 @@ vi.mock('@/lib/notifications', () => ({
 const mockedGetChannels = vi.mocked(getWebhookChannels);
 const mockedDelete = vi.mocked(deleteWebhookChannel);
 const mockedSetupDrive = vi.mocked(setupDriveWebhook);
+const mockedExpected = vi.mocked(getExpectedDriveWebhooks);
 const mockedStopFolder = vi.mocked(stopWatchingFolder);
 const mockedAlert = vi.mocked(sendWebhookAlert);
 
@@ -46,6 +48,7 @@ beforeEach(() => {
   mockedGetChannels.mockReset();
   mockedDelete.mockReset().mockResolvedValue([] as never);
   mockedSetupDrive.mockReset();
+  mockedExpected.mockReset().mockReturnValue([]);
   mockedStopFolder.mockReset().mockResolvedValue(undefined as never);
   mockedAlert.mockReset().mockResolvedValue(undefined);
   delete process.env.CRON_SECRET;
@@ -104,7 +107,7 @@ describe('GET /api/cron/renew-drive-webhooks', () => {
     expect(json.renewed).toBe(1);
   });
 
-  it('fails and alerts when the channel is missing webhook_url/folder_id', async () => {
+  it('retires a legacy channel missing webhook_url/folder_id instead of failing forever', async () => {
     mockedGetChannels.mockResolvedValue([
       driveChannel({ expiration: Date.now() + 60 * 1000, webhook_url: null, folder_id: null }),
     ] as never);
@@ -112,11 +115,82 @@ describe('GET /api/cron/renew-drive-webhooks', () => {
     const response = await GET(makeRequest());
     const json = await response.json();
 
+    expect(mockedStopFolder).toHaveBeenCalledWith('drive-1', 'res-1');
+    expect(mockedDelete).toHaveBeenCalledWith('drive-1');
     expect(mockedSetupDrive).not.toHaveBeenCalled();
+    expect(json.failed).toBe(0);
+    expect(mockedAlert).not.toHaveBeenCalled();
+  });
+
+  it('re-creates a webhook for a configured folder that has no channel', async () => {
+    mockedExpected.mockReturnValue([
+      { webhookUrl: 'https://example.com/api/webhook-drive', folderId: 'photos-folder' },
+      { webhookUrl: 'https://example.com/api/webhook-drive-videos', folderId: 'videos-folder' },
+    ]);
+    mockedGetChannels.mockResolvedValue([
+      driveChannel({
+        expiration: Date.now() + 20 * 60 * 60 * 1000,
+        webhook_url: 'https://example.com/api/webhook-drive-videos',
+        folder_id: 'videos-folder',
+      }),
+    ] as never);
+    mockedSetupDrive.mockResolvedValue({ channelId: 'drive-new', resourceId: 'res-new', expiration: Date.now() + 999999 });
+
+    const response = await GET(makeRequest());
+    const json = await response.json();
+
+    expect(mockedSetupDrive).toHaveBeenCalledTimes(1);
+    expect(mockedSetupDrive).toHaveBeenCalledWith('https://example.com/api/webhook-drive', 'photos-folder');
+    expect(json.created).toBe(1);
+    expect(json.success).toBe(true);
+  });
+
+  it('re-creates the webhook for a retired legacy channel', async () => {
+    mockedExpected.mockReturnValue([
+      { webhookUrl: 'https://example.com/api/webhook-drive', folderId: 'photos-folder' },
+    ]);
+    mockedGetChannels.mockResolvedValue([
+      driveChannel({ webhook_url: null, folder_id: null }),
+    ] as never);
+    mockedSetupDrive.mockResolvedValue({ channelId: 'drive-new', resourceId: 'res-new', expiration: Date.now() + 999999 });
+
+    const response = await GET(makeRequest());
+    const json = await response.json();
+
+    expect(mockedDelete).toHaveBeenCalledWith('drive-1');
+    expect(mockedSetupDrive).toHaveBeenCalledWith('https://example.com/api/webhook-drive', 'photos-folder');
+    expect(json.created).toBe(1);
+  });
+
+  it('does not create a duplicate when a renewal for that folder failed', async () => {
+    mockedExpected.mockReturnValue([
+      { webhookUrl: 'https://example.com/api/webhook-drive', folderId: 'folder-1' },
+    ]);
+    mockedGetChannels.mockResolvedValue([driveChannel({ expiration: Date.now() + 60 * 1000 })] as never);
+    mockedSetupDrive.mockRejectedValue(new Error('drive down'));
+
+    const response = await GET(makeRequest());
+    const json = await response.json();
+
+    expect(mockedSetupDrive).toHaveBeenCalledTimes(1);
+    expect(json.failed).toBe(1);
+    expect(json.created).toBe(0);
+  });
+
+  it('fails and alerts when a missing webhook cannot be created', async () => {
+    mockedExpected.mockReturnValue([
+      { webhookUrl: 'https://example.com/api/webhook-drive', folderId: 'photos-folder' },
+    ]);
+    mockedGetChannels.mockResolvedValue([] as never);
+    mockedSetupDrive.mockRejectedValue(new Error('forbidden'));
+
+    const response = await GET(makeRequest());
+    const json = await response.json();
+
     expect(json.failed).toBe(1);
     expect(json.success).toBe(false);
     expect(mockedAlert).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'renewal_failed', message: expect.stringContaining('drive-1') })
+      expect.objectContaining({ type: 'renewal_failed', message: expect.stringContaining('photos-folder') })
     );
   });
 

@@ -31,7 +31,7 @@ describe('POST /api/webhook-drive', () => {
     expect(mockedSync).not.toHaveBeenCalled();
   });
 
-  it.each(['change', 'update', 'exists'])(
+  it.each(['change', 'update', 'exists', 'add', 'remove', 'trash', 'untrash'])(
     'triggers a forced photo sync on a "%s" notification',
     async (resourceState) => {
       mockedSync.mockResolvedValue({ success: true, message: 'synced' });
@@ -40,6 +40,12 @@ describe('POST /api/webhook-drive', () => {
       expect(response.status).toBe(200);
     }
   );
+
+  it('ignores an unrecognized notification state without syncing', async () => {
+    const response = await POST(makeRequest({ 'x-goog-resource-state': 'something-new' }));
+    expect(mockedSync).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+  });
 
   it('sends a webhook alert and still returns 200 when the sync reports failure', async () => {
     mockedSync.mockResolvedValue({ success: false, message: 'Drive API error' });

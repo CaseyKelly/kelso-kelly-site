@@ -24,21 +24,24 @@ export async function GET(request: NextRequest) {
 
     // Detect and cleanup duplicates FIRST
     const channels = await getWebhookChannels();
-    const channelsByType = new Map<string, typeof channels[0]>();
+    const channelsByResource = new Map<string, typeof channels[0]>();
     const duplicatesToDelete: string[] = [];
 
     for (const channel of channels) {
-      const existing = channelsByType.get(channel.resource_type);
+      // Drive channels watch different folders (photos, videos), so a duplicate
+      // is the same type AND folder - keying on type alone deletes a valid watch.
+      const key = `${channel.resource_type}:${channel.folder_id ?? ''}`;
+      const existing = channelsByResource.get(key);
       if (existing) {
         // Found duplicate - keep the one with later expiration
         if (channel.expiration > existing.expiration) {
           duplicatesToDelete.push(existing.channel_id);
-          channelsByType.set(channel.resource_type, channel);
+          channelsByResource.set(key, channel);
         } else {
           duplicatesToDelete.push(channel.channel_id);
         }
       } else {
-        channelsByType.set(channel.resource_type, channel);
+        channelsByResource.set(key, channel);
       }
     }
 

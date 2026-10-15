@@ -42,15 +42,26 @@ export async function setupDriveWebhook(webhookUrl: string, folderId: string) {
   try {
     const result = await watchFolder(webhookUrl, channelId, folderId);
 
-    // Store in database
-    await upsertWebhookChannel({
-      channel_id: result.channelId,
-      resource_type: 'drive',
-      resource_id: result.resourceId,
-      expiration: result.expiration,
-      webhook_url: webhookUrl,
-      folder_id: folderId,
-    });
+    // Store in database. If that fails, stop the watch we just created -
+    // otherwise it stays live with no row, and the renewal cron's missing-folder
+    // check would create a second watch on the same folder.
+    try {
+      await upsertWebhookChannel({
+        channel_id: result.channelId,
+        resource_type: 'drive',
+        resource_id: result.resourceId,
+        expiration: result.expiration,
+        webhook_url: webhookUrl,
+        folder_id: folderId,
+      });
+    } catch (dbError) {
+      try {
+        await stopWatchingFolder(result.channelId, result.resourceId);
+      } catch (stopError) {
+        console.warn(`Could not stop unpersisted Drive channel ${result.channelId}:`, stopError);
+      }
+      throw dbError;
+    }
 
     console.log('Drive webhook set up:', result);
     return result;

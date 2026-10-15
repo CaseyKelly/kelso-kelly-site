@@ -31,8 +31,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true });
     }
     
-    // Change notification - trigger photo sync
-    if (resourceState === 'change' || resourceState === 'update' || resourceState === 'exists') {
+    // Change notification - trigger photo sync. Trashing a photo arrives as
+    // 'trash' (not 'update'), so it must be included or deletions only reach
+    // the site at the next cron run.
+    const syncStates = ['change', 'update', 'exists', 'add', 'remove', 'trash', 'untrash'];
+    if (resourceState && syncStates.includes(resourceState)) {
       console.log('Drive folder changed, triggering photo sync...');
       console.log('Webhook will wait for sync to complete before responding');
 

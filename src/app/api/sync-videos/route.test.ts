@@ -27,6 +27,17 @@ describe('POST /api/sync-videos', () => {
     await POST(request);
     expect(mockedSync).toHaveBeenCalledWith(false);
   });
+
+  it('rejects an incorrect CRON_SECRET bearer token, even with force=true', async () => {
+    process.env.CRON_SECRET = 'super-secret';
+    const request = new NextRequest('http://localhost/api/sync-videos?force=true', {
+      method: 'POST',
+      headers: { authorization: 'Bearer wrong' },
+    });
+    const response = await POST(request);
+    expect(response.status).toBe(401);
+    expect(mockedSync).not.toHaveBeenCalled();
+  });
 });
 
 describe('GET /api/sync-videos', () => {

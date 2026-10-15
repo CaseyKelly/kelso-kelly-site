@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWebhookChannels, deleteWebhookChannel } from '@/lib/db';
-import { setupDriveWebhook } from '@/lib/webhooks';
+import { setupDriveWebhook, getExpectedDriveWebhooks } from '@/lib/webhooks';
 import { stopWatchingFolder } from '@/lib/google-drive';
 import { sendWebhookAlert } from '@/lib/notifications';
 
@@ -28,7 +28,13 @@ export async function GET(request: NextRequest) {
     const results = {
       renewed: [] as string[],
       failed: [] as string[],
+      created: [] as string[],
     };
+
+    // Folders that still have a channel after this run (renewed, still valid, or
+    // failed renewal whose old record is kept for retry). Anything expected but
+    // not in here gets a fresh webhook below.
+    const coveredFolderIds = new Set<string>();
 
     console.log(`Found ${driveChannels.length} Drive webhook(s) to check`);
 
@@ -36,6 +42,21 @@ export async function GET(request: NextRequest) {
       const timeUntil = channel.expiration - now;
       const hoursUntilExpiration = Math.round(timeUntil / 3600000);
       
+      // Legacy channel with no folder recorded - it can't be renewed in place,
+      // so retire it and let the missing-folder check below re-create it.
+      if (!channel.webhook_url || !channel.folder_id) {
+        console.warn(`Drive channel ${channel.channel_id} is missing webhook_url/folder_id, replacing it`);
+        try {
+          await stopWatchingFolder(channel.channel_id, channel.resource_id);
+        } catch (error) {
+          console.warn('Could not stop legacy channel (may already be expired):', error);
+        }
+        await deleteWebhookChannel(channel.channel_id);
+        continue;
+      }
+
+      coveredFolderIds.add(channel.folder_id);
+
       if (timeUntil < renewalThreshold) {
         try {
           console.log(`Renewing Drive webhook ${channel.channel_id} (expires in ${hoursUntilExpiration}h)`);
@@ -49,11 +70,6 @@ export async function GET(request: NextRequest) {
           }
           
           // Create new webhook, re-watching the same folder via the same route
-          if (!channel.webhook_url || !channel.folder_id) {
-            throw new Error(
-              `Drive channel ${channel.channel_id} is missing webhook_url/folder_id (re-run /api/webhooks/setup)`
-            );
-          }
           const result = await setupDriveWebhook(channel.webhook_url, channel.folder_id);
           console.log(`Created new Drive webhook: ${result.channelId}`);
           
@@ -78,16 +94,43 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const message = `Drive webhooks: ${results.renewed.length} renewed, ${results.failed.length} failed`;
+    // Self-heal: re-create a webhook for any configured folder with no channel,
+    // e.g. after a lost record or a partially failed /api/webhooks/setup run.
+    // Without this, a missing channel is never renewed and that folder silently
+    // falls back to the slow sync cron.
+    const baseUrl = 'https://kelso-kelly-site.vercel.app';
+    for (const expected of getExpectedDriveWebhooks(baseUrl)) {
+      if (coveredFolderIds.has(expected.folderId)) continue;
+
+      try {
+        console.log(`No Drive webhook found for folder ${expected.folderId}, creating one (${expected.webhookUrl})`);
+        const result = await setupDriveWebhook(expected.webhookUrl, expected.folderId);
+        results.created.push(result.channelId);
+        console.log(`✓ Created missing Drive webhook: ${result.channelId}`);
+      } catch (error) {
+        console.error(`Failed to create missing Drive webhook for folder ${expected.folderId}:`, error);
+        results.failed.push(expected.folderId);
+
+        await sendWebhookAlert({
+          type: 'renewal_failed',
+          message: `Failed to create missing Drive webhook for folder ${expected.folderId}`,
+          details: { error: String(error), webhookUrl: expected.webhookUrl },
+        });
+      }
+    }
+
+    const message = `Drive webhooks: ${results.renewed.length} renewed, ${results.created.length} created, ${results.failed.length} failed`;
     console.log(message);
 
     return NextResponse.json({
       success: results.failed.length === 0,
       renewed: results.renewed.length,
+      created: results.created.length,
       failed: results.failed.length,
       message,
       details: {
         renewed: results.renewed,
+        created: results.created,
         failed: results.failed,
       },
     });

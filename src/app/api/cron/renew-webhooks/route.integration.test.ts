@@ -88,6 +88,19 @@ describe('GET /api/cron/renew-webhooks - duplicate channel cleanup', () => {
     expect(remaining).toEqual([{ channel_id: 'cal-1' }, { channel_id: 'drive-1' }]);
   });
 
+  it('does not treat Drive channels for different folders (photos vs videos) as duplicates', async () => {
+    await upsertWebhookChannel({ channel_id: 'drive-photos', resource_type: 'drive', resource_id: 'r1', expiration: Date.now() + 1000, webhook_url: 'https://x/api/webhook-drive', folder_id: 'photos-folder' });
+    await upsertWebhookChannel({ channel_id: 'drive-videos', resource_type: 'drive', resource_id: 'r2', expiration: Date.now() + 999999, webhook_url: 'https://x/api/webhook-drive-videos', folder_id: 'videos-folder' });
+
+    const response = await GET(makeRequest());
+    const json = await response.json();
+
+    expect(json.duplicatesCleaned).toBe(0);
+    expect(mockedStopFolder).not.toHaveBeenCalled();
+    const remaining = await sql`SELECT channel_id FROM webhook_channels ORDER BY channel_id`;
+    expect(remaining).toEqual([{ channel_id: 'drive-photos' }, { channel_id: 'drive-videos' }]);
+  });
+
   it('sends an alert when duplicates are cleaned up', async () => {
     await upsertWebhookChannel({ channel_id: 'drive-early', resource_type: 'drive', resource_id: 'r1', expiration: Date.now() + 1000, webhook_url: 'https://x/api/webhook-drive', folder_id: 'f1' });
     await upsertWebhookChannel({ channel_id: 'drive-late', resource_type: 'drive', resource_id: 'r2', expiration: Date.now() + 999999, webhook_url: 'https://x/api/webhook-drive', folder_id: 'f1' });

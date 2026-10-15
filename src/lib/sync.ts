@@ -17,7 +17,7 @@ import {
   getPhotoImageDataByDriveId,
   getVideoUrls
 } from './db';
-import { put } from '@vercel/blob';
+import { put, del } from '@vercel/blob';
 import { revalidatePath } from 'next/cache';
 import { shouldSync } from './sync-throttle';
 
@@ -322,6 +322,17 @@ export async function syncPhotos(force = false): Promise<SyncResult> {
           await deletePhoto(dbPhotoId);
           deletedCount++;
           console.log(`✓ Deleted photo: ${dbPhotoId}`);
+
+          // Remove the optimized image from Blob storage too, otherwise it stays
+          // publicly reachable forever. A failure here shouldn't fail the sync.
+          const blobUrl = existingPhotos.get(dbPhotoId)?.optimized_url;
+          if (blobUrl) {
+            try {
+              await del(blobUrl);
+            } catch (blobError) {
+              console.warn(`Could not delete blob for photo ${dbPhotoId}:`, blobError);
+            }
+          }
         } catch (error) {
           errorCount++;
           console.error(`✗ Error deleting photo ${dbPhotoId}:`, error);

@@ -7,14 +7,14 @@ export const maxDuration = 60; // 60 seconds max execution time
 /**
  * POST /api/sync-videos
  * Manually trigger a video sync from Google Sheets
+ * Requires the CRON_SECRET bearer token when CRON_SECRET is configured
  */
 export async function POST(request: NextRequest) {
   try {
-    // Optional: Add authentication here
-    // const authHeader = request.headers.get('authorization');
-    // if (authHeader !== `Bearer ${process.env.SYNC_API_SECRET}`) {
-    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    // }
+    const authHeader = request.headers.get('authorization');
+    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     // Check for force parameter in query string
     const { searchParams } = new URL(request.url);

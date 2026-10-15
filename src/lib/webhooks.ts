@@ -42,15 +42,26 @@ export async function setupDriveWebhook(webhookUrl: string, folderId: string) {
   try {
     const result = await watchFolder(webhookUrl, channelId, folderId);
 
-    // Store in database
-    await upsertWebhookChannel({
-      channel_id: result.channelId,
-      resource_type: 'drive',
-      resource_id: result.resourceId,
-      expiration: result.expiration,
-      webhook_url: webhookUrl,
-      folder_id: folderId,
-    });
+    // Store in database. If that fails, stop the watch we just created -
+    // otherwise it stays live with no row, and the renewal cron's missing-folder
+    // check would create a second watch on the same folder.
+    try {
+      await upsertWebhookChannel({
+        channel_id: result.channelId,
+        resource_type: 'drive',
+        resource_id: result.resourceId,
+        expiration: result.expiration,
+        webhook_url: webhookUrl,
+        folder_id: folderId,
+      });
+    } catch (dbError) {
+      try {
+        await stopWatchingFolder(result.channelId, result.resourceId);
+      } catch (stopError) {
+        console.warn(`Could not stop unpersisted Drive channel ${result.channelId}:`, stopError);
+      }
+      throw dbError;
+    }
 
     console.log('Drive webhook set up:', result);
     return result;
@@ -58,6 +69,30 @@ export async function setupDriveWebhook(webhookUrl: string, folderId: string) {
     console.error('Failed to set up drive webhook:', error);
     throw error;
   }
+}
+
+/**
+ * The Drive folders that should always have an active webhook, based on env config.
+ * Used by the Drive renewal cron to re-create any channel that has gone missing.
+ */
+export function getExpectedDriveWebhooks(baseUrl: string): { webhookUrl: string; folderId: string }[] {
+  const expected: { webhookUrl: string; folderId: string }[] = [];
+
+  if (process.env.GOOGLE_DRIVE_PHOTOS_FOLDER_ID) {
+    expected.push({
+      webhookUrl: `${baseUrl}/api/webhook-drive`,
+      folderId: process.env.GOOGLE_DRIVE_PHOTOS_FOLDER_ID,
+    });
+  }
+
+  if (process.env.GOOGLE_DRIVE_VIDEOS_FOLDER_ID) {
+    expected.push({
+      webhookUrl: `${baseUrl}/api/webhook-drive-videos`,
+      folderId: process.env.GOOGLE_DRIVE_VIDEOS_FOLDER_ID,
+    });
+  }
+
+  return expected;
 }
 
 /**

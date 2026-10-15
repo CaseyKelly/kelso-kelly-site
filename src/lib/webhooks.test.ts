@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renewWebhooks, cleanupAllWebhooks, initializeWebhooks } from './webhooks';
+import { renewWebhooks, cleanupAllWebhooks, initializeWebhooks, getExpectedDriveWebhooks, setupDriveWebhook } from './webhooks';
 import { watchCalendar, stopWatchingCalendar } from './google-calendar';
 import { watchFolder, stopWatchingFolder } from './google-drive';
 import { upsertWebhookChannel, getWebhookChannels, deleteWebhookChannel } from './db';
@@ -206,5 +206,47 @@ describe('initializeWebhooks', () => {
 
     expect(mocked.deleteWebhookChannel).toHaveBeenCalledWith('stale');
     expect(result.cleanup.deleted).toBe(1);
+  });
+});
+
+describe('getExpectedDriveWebhooks', () => {
+  beforeEach(() => {
+    delete process.env.GOOGLE_DRIVE_PHOTOS_FOLDER_ID;
+    delete process.env.GOOGLE_DRIVE_VIDEOS_FOLDER_ID;
+  });
+
+  it('lists a webhook for each configured Drive folder', () => {
+    process.env.GOOGLE_DRIVE_PHOTOS_FOLDER_ID = 'photos-folder';
+    process.env.GOOGLE_DRIVE_VIDEOS_FOLDER_ID = 'videos-folder';
+
+    expect(getExpectedDriveWebhooks('https://example.com')).toEqual([
+      { webhookUrl: 'https://example.com/api/webhook-drive', folderId: 'photos-folder' },
+      { webhookUrl: 'https://example.com/api/webhook-drive-videos', folderId: 'videos-folder' },
+    ]);
+  });
+
+  it('omits folders that are not configured', () => {
+    process.env.GOOGLE_DRIVE_PHOTOS_FOLDER_ID = 'photos-folder';
+
+    expect(getExpectedDriveWebhooks('https://example.com')).toEqual([
+      { webhookUrl: 'https://example.com/api/webhook-drive', folderId: 'photos-folder' },
+    ]);
+  });
+});
+
+describe('setupDriveWebhook', () => {
+  it('stops the new watch and rethrows when saving the channel fails', async () => {
+    mocked.watchFolder.mockResolvedValue({ channelId: 'drive-new', resourceId: 'res-new', expiration: 1 });
+    mocked.upsertWebhookChannel.mockRejectedValue(new Error('db down'));
+
+    await expect(setupDriveWebhook('https://example.com/api/webhook-drive', 'photos-folder')).rejects.toThrow('db down');
+    expect(mocked.stopWatchingFolder).toHaveBeenCalledWith('drive-new', 'res-new');
+  });
+
+  it('does not stop the watch when saving succeeds', async () => {
+    mocked.watchFolder.mockResolvedValue({ channelId: 'drive-new', resourceId: 'res-new', expiration: 1 });
+
+    await setupDriveWebhook('https://example.com/api/webhook-drive', 'photos-folder');
+    expect(mocked.stopWatchingFolder).not.toHaveBeenCalled();
   });
 });

@@ -7,14 +7,14 @@ export const maxDuration = 300; // 5 minutes max execution time (photos can take
 /**
  * POST /api/sync-photos
  * Manually trigger a photo sync from Google Drive
+ * Requires the CRON_SECRET bearer token when CRON_SECRET is configured
  */
-export async function POST(_request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    // Optional: Add authentication here
-    // const authHeader = request.headers.get('authorization');
-    // if (authHeader !== `Bearer ${process.env.SYNC_API_SECRET}`) {
-    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    // }
+    const authHeader = request.headers.get('authorization');
+    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     console.log('Manual photo sync triggered');
     

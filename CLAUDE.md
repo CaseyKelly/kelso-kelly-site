@@ -139,7 +139,7 @@ Required as a Vercel env var (in addition to the above) so the videos Drive webh
 ```
 GITHUB_ACTIONS_TOKEN                # Fine-grained GitHub PAT, Actions:read+write on this repo only
 ```
-`/api/webhook-drive-videos` receives the Drive push notification and calls GitHub's `workflow_dispatch` API — it does not perform the upload itself. `webhook_channels.folder_id` tracks which Drive folder each channel watches so `/api/cron/renew-drive-webhooks` can renew multiple Drive folders (photos + videos) generically.
+`/api/webhook-drive-videos` receives the Drive push notification and calls GitHub's `workflow_dispatch` API — it does not perform the upload itself. `webhook_channels.folder_id` tracks which Drive folder each channel watches so `/api/cron/renew-drive-webhooks` can renew multiple Drive folders (photos + videos) generically. That cron also self-heals: any configured folder (`GOOGLE_DRIVE_PHOTOS_FOLDER_ID` / `GOOGLE_DRIVE_VIDEOS_FOLDER_ID`) with no channel row gets a new webhook created on the next run, so a lost or never-created channel recovers within 12 hours.
 
 **Important**: adding `GOOGLE_DRIVE_VIDEOS_FOLDER_ID`/`GITHUB_ACTIONS_TOKEN` to Vercel is not enough on its own — `POST /api/webhooks/setup` (with `WEBHOOK_SETUP_SECRET`) must also be called once to actually create the Google Drive "watch" subscription for the videos folder. Until that call is made, Google has no channel to notify and new videos will silently fall back to the 6-hour cron instead of uploading instantly.
 

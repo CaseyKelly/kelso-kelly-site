@@ -49,9 +49,23 @@ describe('GET /api/sync-calendar', () => {
 });
 
 describe('POST /api/sync-calendar', () => {
-  it('triggers a sync with no auth check', async () => {
+  it('triggers a sync when CRON_SECRET is not configured', async () => {
     mockedSync.mockResolvedValue({ success: true, message: 'ok' });
     const response = await POST(makeRequest());
+    expect(response.status).toBe(200);
+  });
+
+  it('rejects an incorrect bearer token when CRON_SECRET is configured', async () => {
+    process.env.CRON_SECRET = 'super-secret';
+    const response = await POST(makeRequest({ authorization: 'Bearer wrong' }));
+    expect(response.status).toBe(401);
+    expect(mockedSync).not.toHaveBeenCalled();
+  });
+
+  it('accepts a matching bearer token', async () => {
+    process.env.CRON_SECRET = 'super-secret';
+    mockedSync.mockResolvedValue({ success: true, message: 'ok' });
+    const response = await POST(makeRequest({ authorization: 'Bearer super-secret' }));
     expect(response.status).toBe(200);
   });
 });

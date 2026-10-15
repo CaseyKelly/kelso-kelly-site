@@ -7,14 +7,14 @@ export const maxDuration = 60; // 60 seconds max execution time
 /**
  * POST /api/sync-calendar
  * Manually trigger a calendar sync
+ * Requires the CRON_SECRET bearer token when CRON_SECRET is configured
  */
-export async function POST(_request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    // Optional: Add authentication here
-    // const authHeader = request.headers.get('authorization');
-    // if (authHeader !== `Bearer ${process.env.SYNC_API_SECRET}`) {
-    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    // }
+    const authHeader = request.headers.get('authorization');
+    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     console.log('Manual calendar sync triggered');
     

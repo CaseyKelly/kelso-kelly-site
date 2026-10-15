@@ -34,7 +34,14 @@ describe('GET /api/sync-photos', () => {
 });
 
 describe('POST /api/sync-photos', () => {
-  it('triggers the sync with no auth check and returns 200 on success', async () => {
+  it('rejects an incorrect CRON_SECRET bearer token', async () => {
+    process.env.CRON_SECRET = 'super-secret';
+    const response = await POST(makeRequest({ authorization: 'Bearer wrong' }));
+    expect(response.status).toBe(401);
+    expect(mockedSync).not.toHaveBeenCalled();
+  });
+
+  it('triggers the sync when CRON_SECRET is not configured and returns 200 on success', async () => {
     mockedSync.mockResolvedValue({ success: true, message: 'ok' });
     const response = await POST(makeRequest());
     expect(response.status).toBe(200);

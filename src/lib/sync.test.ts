@@ -16,7 +16,7 @@ import {
   getPhotoImageDataByDriveId,
   getVideoUrls,
 } from './db';
-import { put } from '@vercel/blob';
+import { put, del } from '@vercel/blob';
 import { shouldSync } from './sync-throttle';
 
 vi.mock('./google-calendar', () => ({
@@ -59,6 +59,7 @@ vi.mock('./db', () => ({
 }));
 vi.mock('@vercel/blob', () => ({
   put: vi.fn(),
+  del: vi.fn(),
 }));
 vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
@@ -85,6 +86,7 @@ const mocked = {
   getPhotoImageDataByDriveId: vi.mocked(getPhotoImageDataByDriveId),
   getVideoUrls: vi.mocked(getVideoUrls),
   put: vi.mocked(put),
+  del: vi.mocked(del),
   shouldSync: vi.mocked(shouldSync),
 };
 
@@ -354,6 +356,32 @@ describe('syncPhotos', () => {
 
     expect(mocked.deletePhoto).toHaveBeenCalledTimes(4);
     expect(result.details!.deleted).toBe(4);
+  });
+
+  it('deletes the blob for each photo removed from Drive', async () => {
+    mocked.listImageFilesInFolder.mockResolvedValue([]);
+    mocked.getPhotoImageDataByDriveId.mockResolvedValue(new Map([
+      ['p1', { optimized_url: 'https://blob.example.com/p1.webp', width: 1, height: 1 }],
+    ]));
+
+    await syncPhotos();
+
+    expect(mocked.deletePhoto).toHaveBeenCalledWith('p1');
+    expect(mocked.del).toHaveBeenCalledWith('https://blob.example.com/p1.webp');
+  });
+
+  it('still counts the photo as deleted when the blob delete fails', async () => {
+    mocked.listImageFilesInFolder.mockResolvedValue([]);
+    mocked.getPhotoImageDataByDriveId.mockResolvedValue(new Map([
+      ['p1', { optimized_url: 'https://blob.example.com/p1.webp', width: 1, height: 1 }],
+    ]));
+    mocked.del.mockRejectedValueOnce(new Error('blob store down'));
+
+    const result = await syncPhotos();
+
+    expect(result.success).toBe(true);
+    expect(result.details!.deleted).toBe(1);
+    expect(result.details!.errors).toBe(0);
   });
 });
 

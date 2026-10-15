@@ -8,6 +8,7 @@ import {
   sql,
   upsertEvent,
   upsertPhoto,
+  updatePhotosMetadata,
   upsertVideo,
   deletePhoto,
   deleteEvent,
@@ -44,6 +45,7 @@ vi.mock('./db', () => ({
   sql: vi.fn().mockResolvedValue([]),
   upsertEvent: vi.fn(),
   upsertPhoto: vi.fn(),
+  updatePhotosMetadata: vi.fn().mockResolvedValue(new Set()),
   upsertVideo: vi.fn(),
   deleteVideo: vi.fn(),
   deletePhoto: vi.fn(),
@@ -78,6 +80,7 @@ const mocked = {
   sql: vi.mocked(sql),
   upsertEvent: vi.mocked(upsertEvent),
   upsertPhoto: vi.mocked(upsertPhoto),
+  updatePhotosMetadata: vi.mocked(updatePhotosMetadata),
   upsertVideo: vi.mocked(upsertVideo),
   deletePhoto: vi.mocked(deletePhoto),
   deleteEvent: vi.mocked(deleteEvent),
@@ -323,25 +326,40 @@ describe('syncPhotos', () => {
     expect(result.success).toBe(false); // errorCount > 0
   });
 
-  it('updates metadata only for an existing photo, preserving its stored image data', async () => {
-    mocked.listImageFilesInFolder.mockResolvedValue([driveFile('existing-photo')]);
+  it('updates metadata for all existing photos in one batch, without re-processing their images', async () => {
+    mocked.listImageFilesInFolder.mockResolvedValue([driveFile('existing-a'), driveFile('existing-b')]);
     mocked.getPhotoImageDataByDriveId.mockResolvedValue(new Map([
-      ['existing-photo', { optimized_url: 'https://blob.example.com/existing.webp', width: 640, height: 480 }],
+      ['existing-a', { optimized_url: 'https://blob.example.com/a.webp', width: 640, height: 480 }],
+      ['existing-b', { optimized_url: 'https://blob.example.com/b.webp', width: 640, height: 480 }],
     ]));
-    mocked.upsertPhoto.mockResolvedValue({ action: 'updated', photo: {} as never });
+    mocked.updatePhotosMetadata.mockResolvedValue(new Set(['existing-a']));
 
     const result = await syncPhotos();
 
     expect(mocked.downloadFile).not.toHaveBeenCalled();
     expect(mocked.optimizeImage).not.toHaveBeenCalled();
-    expect(mocked.upsertPhoto).toHaveBeenCalledWith(
-      expect.objectContaining({
-        optimized_url: 'https://blob.example.com/existing.webp',
-        width: 640,
-        height: 480,
-      })
-    );
+    expect(mocked.upsertPhoto).not.toHaveBeenCalled();
+    expect(mocked.updatePhotosMetadata).toHaveBeenCalledTimes(1);
+    expect(mocked.updatePhotosMetadata).toHaveBeenCalledWith([
+      expect.objectContaining({ google_drive_id: 'existing-a', order_index: 0 }),
+      expect.objectContaining({ google_drive_id: 'existing-b', order_index: 1 }),
+    ]);
     expect(result.details!.updated).toBe(1);
+    expect(result.details!.skipped).toBe(1);
+  });
+
+  it('counts every existing photo as an error when the batch metadata update fails', async () => {
+    mocked.listImageFilesInFolder.mockResolvedValue([driveFile('existing-a'), driveFile('existing-b')]);
+    mocked.getPhotoImageDataByDriveId.mockResolvedValue(new Map([
+      ['existing-a', { optimized_url: 'https://blob.example.com/a.webp', width: 640, height: 480 }],
+      ['existing-b', { optimized_url: 'https://blob.example.com/b.webp', width: 640, height: 480 }],
+    ]));
+    mocked.updatePhotosMetadata.mockRejectedValueOnce(new Error('db down'));
+
+    const result = await syncPhotos();
+
+    expect(result.success).toBe(false);
+    expect(result.details!.errors).toBe(2);
   });
 
   it('deletes DB photos missing from Drive with no safety guard, even for a large proportion', async () => {

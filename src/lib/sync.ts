@@ -9,13 +9,15 @@ import {
   sql,
   upsertEvent,
   upsertPhoto,
+  updatePhotosMetadata,
   upsertVideo,
   deletePhoto,
   deleteEvent,
   logSync,
   getEventIds,
   getPhotoImageDataByDriveId,
-  getVideoUrls
+  getVideoUrls,
+  type DbPhoto,
 } from './db';
 import { put, del } from '@vercel/blob';
 import { revalidatePath } from 'next/cache';
@@ -182,7 +184,7 @@ export async function syncPhotos(force = false): Promise<SyncResult> {
     const { optimizeImage, isHeicFile, UnsupportedFormatError } = await import('./image-optimizer');
 
     const folderId = process.env.GOOGLE_DRIVE_PHOTOS_FOLDER_ID;
-    const defaultCategory = 'performance';
+    const defaultCategory: DbPhoto['category'] = 'performance';
 
     let createdCount = 0;
     let updatedCount = 0;
@@ -216,35 +218,40 @@ export async function syncPhotos(force = false): Promise<SyncResult> {
     // Create a Set of Drive file IDs for efficient lookup
     const driveFileIds = new Set(files.map(f => f.id));
 
+    // Existing photos only need their metadata refreshed (image data is kept),
+    // so update them all in one query instead of an upsert per photo (N+1)
+    const existingFileUpdates = files.flatMap((file, i) => {
+      if (!existingPhotos.has(file.id)) return [];
+      const title = cleanFilenameForTitle(file.name);
+      return [{
+        google_drive_id: file.id,
+        title,
+        category: defaultCategory,
+        alt_text: title,
+        order_index: i,
+      }];
+    });
+
+    try {
+      const updatedIds = await updatePhotosMetadata(existingFileUpdates);
+      updatedCount += updatedIds.size;
+      skippedCount += existingFileUpdates.length - updatedIds.size;
+      for (const file of files) {
+        if (updatedIds.has(file.id)) {
+          console.log(`✓ Updated metadata: ${file.name}`);
+        }
+      }
+    } catch (error) {
+      errorCount += existingFileUpdates.length;
+      console.error('✗ Error updating existing photo metadata:', error);
+    }
+
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
 
+      if (existingPhotos.has(file.id)) continue;
+
       try {
-        const existingPhoto = existingPhotos.get(file.id);
-
-        if (existingPhoto) {
-          const title = cleanFilenameForTitle(file.name);
-          const altText = title;
-
-          const result = await upsertPhoto({
-            google_drive_id: file.id,
-            title,
-            category: defaultCategory,
-            alt_text: altText,
-            optimized_url: existingPhoto.optimized_url, // Keep existing
-            width: existingPhoto.width, // Keep existing
-            height: existingPhoto.height, // Keep existing
-            order_index: i,
-          });
-
-          if (result.action === 'updated') {
-            updatedCount++;
-            console.log(`✓ Updated metadata: ${file.name}`);
-          } else {
-            skippedCount++;
-          }
-          continue;
-        }
         
         // Check if this is a HEIC file (unsupported format)
         if (isHeicFile(file.name, file.mimeType)) {

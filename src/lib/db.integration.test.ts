@@ -3,6 +3,7 @@ import {
   sql,
   upsertEvent,
   upsertPhoto,
+  updatePhotosMetadata,
   upsertVideo,
   getEventIds,
   getPhotoIds,
@@ -161,6 +162,50 @@ describe('id/URL set getters used for sync diffing', () => {
       ['photo-a', { optimized_url: 'https://blob.example.com/a.webp', width: 1920, height: 1080 }],
       ['photo-b', { optimized_url: 'https://blob.example.com/b.webp', width: null, height: null }],
     ]));
+  });
+});
+
+describe('updatePhotosMetadata', () => {
+  const insertPhoto = (id: string, order_index: number) => upsertPhoto({
+    google_drive_id: id,
+    title: id,
+    category: 'performance',
+    alt_text: id,
+    optimized_url: `https://blob.example.com/${id}.webp`,
+    width: 800,
+    height: 600,
+    order_index,
+  });
+
+  it('updates only changed rows in one call, preserving image data and updated_at of unchanged rows', async () => {
+    await insertPhoto('photo-a', 0);
+    await insertPhoto('photo-b', 1);
+    const [before] = await sql`SELECT updated_at FROM photos WHERE google_drive_id = 'photo-a'`;
+    await new Promise((r) => setTimeout(r, 20));
+
+    const updated = await updatePhotosMetadata([
+      { google_drive_id: 'photo-a', title: 'photo-a', category: 'performance', alt_text: 'photo-a', order_index: 0 },
+      { google_drive_id: 'photo-b', title: 'Renamed', category: 'performance', alt_text: null, order_index: 5 },
+      { google_drive_id: 'not-in-db', title: 'Ghost', category: 'performance', alt_text: null, order_index: 2 },
+    ]);
+
+    expect(updated).toEqual(new Set(['photo-b']));
+
+    const rows = await sql`SELECT * FROM photos ORDER BY google_drive_id`;
+    expect(rows).toHaveLength(2);
+    expect(new Date(rows[0].updated_at).getTime()).toBe(new Date(before.updated_at).getTime());
+    expect(rows[1]).toMatchObject({
+      title: 'Renamed',
+      alt_text: null,
+      order_index: 5,
+      optimized_url: 'https://blob.example.com/photo-b.webp',
+      width: 800,
+      height: 600,
+    });
+  });
+
+  it('is a no-op for an empty list', async () => {
+    expect(await updatePhotosMetadata([])).toEqual(new Set());
   });
 });
 

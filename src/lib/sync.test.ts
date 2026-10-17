@@ -3,7 +3,7 @@ import { syncCalendarEvents, syncPhotos, syncVideos } from './sync';
 import { fetchAllCalendarEvents } from './google-calendar';
 import { listImageFilesInFolder, downloadFile } from './google-drive';
 import { fetchVideosFromSheetWithThumbnails } from './google-sheets';
-import { optimizeImage, isHeicFile, UnsupportedFormatError } from './image-optimizer';
+import { optimizeImage, UnsupportedFormatError } from './image-optimizer';
 import {
   sql,
   upsertEvent,
@@ -38,7 +38,6 @@ vi.mock('./image-optimizer', async () => {
   return {
     ...actual,
     optimizeImage: vi.fn(),
-    isHeicFile: vi.fn(() => false),
   };
 });
 vi.mock('./db', () => ({
@@ -76,7 +75,6 @@ const mocked = {
   downloadFile: vi.mocked(downloadFile),
   fetchVideosFromSheetWithThumbnails: vi.mocked(fetchVideosFromSheetWithThumbnails),
   optimizeImage: vi.mocked(optimizeImage),
-  isHeicFile: vi.mocked(isHeicFile),
   sql: vi.mocked(sql),
   upsertEvent: vi.mocked(upsertEvent),
   upsertPhoto: vi.mocked(upsertPhoto),
@@ -258,7 +256,6 @@ describe('syncPhotos', () => {
   it('downloads, optimizes, and uploads a new (non-HEIC) photo', async () => {
     mocked.listImageFilesInFolder.mockResolvedValue([driveFile('new-photo')]);
     mocked.getPhotoImageDataByDriveId.mockResolvedValue(new Map());
-    mocked.isHeicFile.mockReturnValue(false);
     mocked.downloadFile.mockResolvedValue(Buffer.from('fake-image-bytes'));
     mocked.optimizeImage.mockResolvedValue({
       buffer: Buffer.from('optimized'),
@@ -281,23 +278,39 @@ describe('syncPhotos', () => {
     expect(result.success).toBe(true);
   });
 
-  it('skips HEIC files without downloading, and does not count them as errors', async () => {
-    mocked.listImageFilesInFolder.mockResolvedValue([driveFile('heic-photo', { name: 'heic-photo.heic' })]);
+  it('downloads and optimizes HEIC files like any other photo instead of skipping them', async () => {
+    mocked.listImageFilesInFolder.mockResolvedValue([
+      driveFile('heic-photo', { name: 'heic-photo.heic', mimeType: 'image/heic' }),
+    ]);
     mocked.getPhotoImageDataByDriveId.mockResolvedValue(new Map());
-    mocked.isHeicFile.mockReturnValue(true);
+    mocked.downloadFile.mockResolvedValue(Buffer.from('heic-bytes'));
+    mocked.optimizeImage.mockResolvedValue({
+      buffer: Buffer.from('optimized'),
+      width: 800,
+      height: 600,
+      format: 'webp',
+      size: 9,
+    });
+    mocked.put.mockResolvedValue({ url: 'https://blob.example.com/heic-photo.webp' } as never);
+    mocked.upsertPhoto.mockResolvedValue({ action: 'created', photo: {} as never });
 
     const result = await syncPhotos();
 
-    expect(mocked.downloadFile).not.toHaveBeenCalled();
-    expect(result.details!.heicSkipped).toBe(1);
-    expect(result.details!.errors).toBe(0);
+    expect(mocked.downloadFile).toHaveBeenCalledWith('heic-photo');
+    expect(mocked.optimizeImage).toHaveBeenCalledWith(
+      Buffer.from('heic-bytes'),
+      expect.anything(),
+      { filename: 'heic-photo.heic', mimeType: 'image/heic' }
+    );
+    expect(mocked.put).toHaveBeenCalledWith('photos/heic-photo.webp', expect.anything(), expect.anything());
+    expect(result.details!.created).toBe(1);
+    expect(result.details!.heicSkipped).toBe(0);
     expect(result.success).toBe(true);
   });
 
-  it('treats UnsupportedFormatError thrown during optimization as a HEIC skip, not an error', async () => {
+  it('treats a HEIC file that fails to decode (UnsupportedFormatError) as a skip, not an error', async () => {
     mocked.listImageFilesInFolder.mockResolvedValue([driveFile('bad-format')]);
     mocked.getPhotoImageDataByDriveId.mockResolvedValue(new Map());
-    mocked.isHeicFile.mockReturnValue(false);
     mocked.downloadFile.mockResolvedValue(Buffer.from('bytes'));
     mocked.optimizeImage.mockRejectedValue(new UnsupportedFormatError('HEIC'));
 
@@ -311,7 +324,6 @@ describe('syncPhotos', () => {
   it('counts a generic processing error and continues with the remaining files', async () => {
     mocked.listImageFilesInFolder.mockResolvedValue([driveFile('broken'), driveFile('fine')]);
     mocked.getPhotoImageDataByDriveId.mockResolvedValue(new Map());
-    mocked.isHeicFile.mockReturnValue(false);
     mocked.downloadFile.mockResolvedValueOnce(Buffer.from('bad')).mockResolvedValueOnce(Buffer.from('good'));
     mocked.optimizeImage
       .mockRejectedValueOnce(new Error('sharp exploded'))

@@ -1,6 +1,16 @@
+import { readFileSync } from 'node:fs';
 import { describe, it, expect } from 'vitest';
 import sharp from 'sharp';
-import { isHeicFile, optimizeImage, ImageProcessingError } from './image-optimizer';
+import {
+  isHeicFile,
+  hasHeicSignature,
+  optimizeImage,
+  ImageProcessingError,
+  UnsupportedFormatError,
+} from './image-optimizer';
+
+// 64x48 solid-red HEVC-coded HEIC, the format iPhones save photos in
+const sampleHeic = readFileSync(new URL('./__fixtures__/sample.heic', import.meta.url));
 
 function makeImageBuffer(width: number, height: number): Promise<Buffer> {
   return sharp({
@@ -24,6 +34,32 @@ describe('isHeicFile', () => {
   it('returns false for ordinary image files', () => {
     expect(isHeicFile('photo.jpg', 'image/jpeg')).toBe(false);
     expect(isHeicFile('photo.png')).toBe(false);
+  });
+});
+
+describe('hasHeicSignature', () => {
+  it('detects a HEIC file from its header bytes', () => {
+    expect(hasHeicSignature(sampleHeic)).toBe(true);
+  });
+
+  it('detects a HEIC file whose major brand is generic mif1 but lists heic as compatible', () => {
+    // The fixture's ftyp box is: major 'heic', compatible ['mif1', 'heic', 'miaf']
+    const mif1Major = Buffer.from(sampleHeic);
+    mif1Major.write('mif1', 8, 'ascii');
+    expect(hasHeicSignature(mif1Major)).toBe(true);
+  });
+
+  it('does not treat an AVIF file as HEIC', () => {
+    const avif = Buffer.alloc(32);
+    avif.writeUInt32BE(28, 0);
+    avif.write('ftypavif', 4, 'ascii');
+    avif.write('avifmif1miaf', 16, 'ascii');
+    expect(hasHeicSignature(avif)).toBe(false);
+  });
+
+  it('returns false for non-HEIC images and short buffers', async () => {
+    expect(hasHeicSignature(await makeImageBuffer(10, 10))).toBe(false);
+    expect(hasHeicSignature(Buffer.from('tiny'))).toBe(false);
   });
 });
 
@@ -56,5 +92,33 @@ describe('optimizeImage', () => {
   it('throws ImageProcessingError (not UnsupportedFormatError) for invalid, non-HEIC input', async () => {
     const garbage = Buffer.from('this is not an image');
     await expect(optimizeImage(garbage)).rejects.toBeInstanceOf(ImageProcessingError);
+  });
+
+  it('converts a HEIC photo to WebP', async () => {
+    const result = await optimizeImage(sampleHeic, { format: 'webp' }, { filename: 'IMG_0001.HEIC' });
+    expect(result.format).toBe('webp');
+    expect(result.width).toBe(64);
+    expect(result.height).toBe(48);
+  });
+
+  it('converts a HEIC photo even when its filename and mime type do not say HEIC', async () => {
+    const result = await optimizeImage(sampleHeic, { format: 'webp' }, { filename: 'photo.jpg', mimeType: 'image/jpeg' });
+    expect(result.format).toBe('webp');
+    expect(result.width).toBe(64);
+  });
+
+  it('converts a mislabeled HEIC photo whose major brand is mif1', async () => {
+    const mif1Major = Buffer.from(sampleHeic);
+    mif1Major.write('mif1', 8, 'ascii');
+    const result = await optimizeImage(mif1Major, { format: 'webp' }, { filename: 'photo.jpg', mimeType: 'image/jpeg' });
+    expect(result.format).toBe('webp');
+    expect(result.width).toBe(64);
+  });
+
+  it('throws UnsupportedFormatError when a HEIC file cannot be decoded', async () => {
+    const corrupt = Buffer.from('not really a heic file');
+    await expect(optimizeImage(corrupt, {}, { filename: 'broken.heic' })).rejects.toBeInstanceOf(
+      UnsupportedFormatError
+    );
   });
 });

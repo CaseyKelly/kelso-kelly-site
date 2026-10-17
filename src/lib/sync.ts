@@ -181,7 +181,7 @@ export async function syncPhotos(force = false): Promise<SyncResult> {
 
     // Loaded lazily so routes that only sync calendar/video data never pull
     // in sharp (and its native libvips binary) into their function bundle.
-    const { optimizeImage, isHeicFile, UnsupportedFormatError } = await import('./image-optimizer');
+    const { optimizeImage, UnsupportedFormatError } = await import('./image-optimizer');
 
     const folderId = process.env.GOOGLE_DRIVE_PHOTOS_FOLDER_ID;
     const defaultCategory: DbPhoto['category'] = 'performance';
@@ -252,14 +252,6 @@ export async function syncPhotos(force = false): Promise<SyncResult> {
       if (existingPhotos.has(file.id)) continue;
 
       try {
-        
-        // Check if this is a HEIC file (unsupported format)
-        if (isHeicFile(file.name, file.mimeType)) {
-          console.log(`⚠️  Skipping HEIC file (unsupported format): ${file.name}`);
-          heicSkippedCount++;
-          continue;
-        }
-        
         // New photo - download, optimize, and upload
         console.log(`Processing new photo: ${file.name}...`);
         
@@ -363,9 +355,9 @@ export async function syncPhotos(force = false): Promise<SyncResult> {
     const summary = summaryParts.join(', ');
     console.log(`Photo sync complete - ${summary}`);
 
-    // Add helpful message if HEIC files were skipped
+    // HEIC files are converted automatically, so these are files that failed to decode
     if (heicSkippedCount > 0) {
-      console.log(`ℹ️  Note: ${heicSkippedCount} HEIC file(s) were skipped. HEIC format is not supported. Please convert to JPEG or PNG before uploading.`);
+      console.log(`ℹ️  Note: ${heicSkippedCount} file(s) were skipped because they could not be decoded. Try re-exporting them as JPEG or PNG.`);
     }
 
     // Revalidate the media page

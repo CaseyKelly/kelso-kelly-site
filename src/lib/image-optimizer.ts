@@ -43,15 +43,56 @@ export class ImageProcessingError extends Error {
  */
 export function isHeicFile(filename: string, mimeType?: string): boolean {
   const ext = filename.toLowerCase();
-  return ext.endsWith('.heic') || 
-         ext.endsWith('.heif') || 
-         mimeType?.toLowerCase().includes('heif') || 
+  return ext.endsWith('.heic') ||
+         ext.endsWith('.heif') ||
+         mimeType?.toLowerCase().includes('heif') ||
          mimeType?.toLowerCase().includes('heic') ||
          false;
 }
 
+// ISO-BMFF brands used by HEVC-coded HEIF images (iPhone photos).
+// Generic 'mif1'/'msf1' are deliberately excluded: they also cover AVIF, which Sharp reads natively.
+const HEIC_BRANDS = new Set(['heic', 'heix', 'heim', 'heis', 'hevc', 'hevx', 'hevm', 'hevs']);
+const AVIF_BRANDS = new Set(['avif', 'avis']);
+
+/**
+ * Sniff the file header for a HEIC 'ftyp' box, so mislabeled files are still converted.
+ * Checks the compatible brands too: a HEIC file may use generic 'mif1' as its
+ * major brand and only list 'heic' among its compatible brands.
+ */
+export function hasHeicSignature(buffer: Buffer): boolean {
+  if (buffer.length < 12 || buffer.toString('ascii', 4, 8) !== 'ftyp') return false;
+  const majorBrand = buffer.toString('ascii', 8, 12);
+  if (HEIC_BRANDS.has(majorBrand)) return true;
+  if (AVIF_BRANDS.has(majorBrand)) return false;
+
+  // Box layout: size(4) 'ftyp'(4) major_brand(4) minor_version(4) compatible_brands(4 each)
+  const boxEnd = Math.min(buffer.readUInt32BE(0), buffer.length);
+  for (let offset = 16; offset + 4 <= boxEnd; offset += 4) {
+    if (HEIC_BRANDS.has(buffer.toString('ascii', offset, offset + 4))) return true;
+  }
+  return false;
+}
+
+/**
+ * Decode a HEIC/HEIF image to JPEG so Sharp can process it.
+ * Sharp's prebuilt libvips has no HEVC decoder, so we use heic-convert
+ * (libheif compiled to WebAssembly), which needs no native binaries.
+ */
+async function convertHeicToJpeg(inputBuffer: Buffer, filename?: string): Promise<Buffer> {
+  try {
+    const { default: convert } = await import('heic-convert');
+    const output = await convert({ buffer: inputBuffer, format: 'JPEG', quality: 1 });
+    return Buffer.from(output);
+  } catch (error) {
+    const format = filename?.split('.').pop()?.toUpperCase() || 'HEIC/HEIF';
+    throw new UnsupportedFormatError(format, error as Error);
+  }
+}
+
 /**
  * Optimize an image using Sharp
+ * - Convert HEIC/HEIF (e.g. iPhone photos) to JPEG first
  * - Resize to max dimensions
  * - Convert to WebP format (best compression)
  * - Compress with specified quality
@@ -71,6 +112,12 @@ export async function optimizeImage(
     quality = 85,
     format = 'webp',
   } = options;
+
+  // Converted outside the try below so a failed decode surfaces as the
+  // UnsupportedFormatError thrown by convertHeicToJpeg, not an ImageProcessingError
+  if (isHeicFile(metadata?.filename ?? '', metadata?.mimeType) || hasHeicSignature(inputBuffer)) {
+    inputBuffer = await convertHeicToJpeg(inputBuffer, metadata?.filename);
+  }
 
   try {
     let pipeline = sharp(inputBuffer);

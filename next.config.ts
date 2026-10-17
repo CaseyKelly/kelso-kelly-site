@@ -5,7 +5,9 @@ const nextConfig: NextConfig = {
   // Keep sharp out of the Turbopack/webpack bundle so its native libvips
   // binary is resolved normally from node_modules at runtime instead of
   // being traced/bundled (which breaks native binding loading on Vercel).
-  serverExternalPackages: ["sharp"],
+  // heic-convert is kept external too so its libheif WebAssembly build
+  // loads from node_modules as-is rather than through the bundler.
+  serverExternalPackages: ["sharp", "heic-convert"],
   images: {
     formats: ["image/avif", "image/webp"],
     remotePatterns: [

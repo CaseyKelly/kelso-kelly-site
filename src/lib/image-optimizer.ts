@@ -43,15 +43,44 @@ export class ImageProcessingError extends Error {
  */
 export function isHeicFile(filename: string, mimeType?: string): boolean {
   const ext = filename.toLowerCase();
-  return ext.endsWith('.heic') || 
-         ext.endsWith('.heif') || 
-         mimeType?.toLowerCase().includes('heif') || 
+  return ext.endsWith('.heic') ||
+         ext.endsWith('.heif') ||
+         mimeType?.toLowerCase().includes('heif') ||
          mimeType?.toLowerCase().includes('heic') ||
          false;
 }
 
+// ISO-BMFF major brands used by HEVC-coded HEIF images (iPhone photos).
+// 'mif1'/'avif' are deliberately excluded: they also cover AVIF, which Sharp reads natively.
+const HEIC_BRANDS = new Set(['heic', 'heix', 'heim', 'heis', 'hevc', 'hevx', 'hevm', 'hevs']);
+
+/**
+ * Sniff the file header for a HEIC 'ftyp' box, so mislabeled files are still converted
+ */
+export function hasHeicSignature(buffer: Buffer): boolean {
+  if (buffer.length < 12 || buffer.toString('ascii', 4, 8) !== 'ftyp') return false;
+  return HEIC_BRANDS.has(buffer.toString('ascii', 8, 12));
+}
+
+/**
+ * Decode a HEIC/HEIF image to JPEG so Sharp can process it.
+ * Sharp's prebuilt libvips has no HEVC decoder, so we use heic-convert
+ * (libheif compiled to WebAssembly), which needs no native binaries.
+ */
+async function convertHeicToJpeg(inputBuffer: Buffer, filename?: string): Promise<Buffer> {
+  try {
+    const { default: convert } = await import('heic-convert');
+    const output = await convert({ buffer: inputBuffer, format: 'JPEG', quality: 1 });
+    return Buffer.from(output);
+  } catch (error) {
+    const format = filename?.split('.').pop()?.toUpperCase() || 'HEIC/HEIF';
+    throw new UnsupportedFormatError(format, error as Error);
+  }
+}
+
 /**
  * Optimize an image using Sharp
+ * - Convert HEIC/HEIF (e.g. iPhone photos) to JPEG first
  * - Resize to max dimensions
  * - Convert to WebP format (best compression)
  * - Compress with specified quality
@@ -71,6 +100,12 @@ export async function optimizeImage(
     quality = 85,
     format = 'webp',
   } = options;
+
+  // Converted outside the try below so a failed decode surfaces as the
+  // UnsupportedFormatError thrown by convertHeicToJpeg, not an ImageProcessingError
+  if (isHeicFile(metadata?.filename ?? '', metadata?.mimeType) || hasHeicSignature(inputBuffer)) {
+    inputBuffer = await convertHeicToJpeg(inputBuffer, metadata?.filename);
+  }
 
   try {
     let pipeline = sharp(inputBuffer);

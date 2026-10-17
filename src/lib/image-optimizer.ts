@@ -50,16 +50,28 @@ export function isHeicFile(filename: string, mimeType?: string): boolean {
          false;
 }
 
-// ISO-BMFF major brands used by HEVC-coded HEIF images (iPhone photos).
-// 'mif1'/'avif' are deliberately excluded: they also cover AVIF, which Sharp reads natively.
+// ISO-BMFF brands used by HEVC-coded HEIF images (iPhone photos).
+// Generic 'mif1'/'msf1' are deliberately excluded: they also cover AVIF, which Sharp reads natively.
 const HEIC_BRANDS = new Set(['heic', 'heix', 'heim', 'heis', 'hevc', 'hevx', 'hevm', 'hevs']);
+const AVIF_BRANDS = new Set(['avif', 'avis']);
 
 /**
- * Sniff the file header for a HEIC 'ftyp' box, so mislabeled files are still converted
+ * Sniff the file header for a HEIC 'ftyp' box, so mislabeled files are still converted.
+ * Checks the compatible brands too: a HEIC file may use generic 'mif1' as its
+ * major brand and only list 'heic' among its compatible brands.
  */
 export function hasHeicSignature(buffer: Buffer): boolean {
   if (buffer.length < 12 || buffer.toString('ascii', 4, 8) !== 'ftyp') return false;
-  return HEIC_BRANDS.has(buffer.toString('ascii', 8, 12));
+  const majorBrand = buffer.toString('ascii', 8, 12);
+  if (HEIC_BRANDS.has(majorBrand)) return true;
+  if (AVIF_BRANDS.has(majorBrand)) return false;
+
+  // Box layout: size(4) 'ftyp'(4) major_brand(4) minor_version(4) compatible_brands(4 each)
+  const boxEnd = Math.min(buffer.readUInt32BE(0), buffer.length);
+  for (let offset = 16; offset + 4 <= boxEnd; offset += 4) {
+    if (HEIC_BRANDS.has(buffer.toString('ascii', offset, offset + 4))) return true;
+  }
+  return false;
 }
 
 /**

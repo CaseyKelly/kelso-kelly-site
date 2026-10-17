@@ -42,6 +42,21 @@ describe('hasHeicSignature', () => {
     expect(hasHeicSignature(sampleHeic)).toBe(true);
   });
 
+  it('detects a HEIC file whose major brand is generic mif1 but lists heic as compatible', () => {
+    // The fixture's ftyp box is: major 'heic', compatible ['mif1', 'heic', 'miaf']
+    const mif1Major = Buffer.from(sampleHeic);
+    mif1Major.write('mif1', 8, 'ascii');
+    expect(hasHeicSignature(mif1Major)).toBe(true);
+  });
+
+  it('does not treat an AVIF file as HEIC', () => {
+    const avif = Buffer.alloc(32);
+    avif.writeUInt32BE(28, 0);
+    avif.write('ftypavif', 4, 'ascii');
+    avif.write('avifmif1miaf', 16, 'ascii');
+    expect(hasHeicSignature(avif)).toBe(false);
+  });
+
   it('returns false for non-HEIC images and short buffers', async () => {
     expect(hasHeicSignature(await makeImageBuffer(10, 10))).toBe(false);
     expect(hasHeicSignature(Buffer.from('tiny'))).toBe(false);
@@ -88,6 +103,14 @@ describe('optimizeImage', () => {
 
   it('converts a HEIC photo even when its filename and mime type do not say HEIC', async () => {
     const result = await optimizeImage(sampleHeic, { format: 'webp' }, { filename: 'photo.jpg', mimeType: 'image/jpeg' });
+    expect(result.format).toBe('webp');
+    expect(result.width).toBe(64);
+  });
+
+  it('converts a mislabeled HEIC photo whose major brand is mif1', async () => {
+    const mif1Major = Buffer.from(sampleHeic);
+    mif1Major.write('mif1', 8, 'ascii');
+    const result = await optimizeImage(mif1Major, { format: 'webp' }, { filename: 'photo.jpg', mimeType: 'image/jpeg' });
     expect(result.format).toBe('webp');
     expect(result.width).toBe(64);
   });

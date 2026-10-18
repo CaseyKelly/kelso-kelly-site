@@ -29,9 +29,16 @@ describe('GET /api/webhooks/setup', () => {
 });
 
 describe('POST /api/webhooks/setup', () => {
-  it('runs with no auth check when neither secret env var is configured', async () => {
+  it('rejects every request when neither secret env var is configured', async () => {
+    const response = await POST(makeRequest({ authorization: 'Bearer undefined' }));
+    expect(response.status).toBe(401);
+    expect(mockedInit).not.toHaveBeenCalled();
+  });
+
+  it('runs with a matching WEBHOOK_SETUP_SECRET bearer token', async () => {
+    process.env.WEBHOOK_SETUP_SECRET = 'super-secret';
     mockedInit.mockResolvedValue({ calendar: {}, drivePhotos: {}, driveVideos: null, cleanup: { stopped: 0, failed: 0, deleted: 0 }, errors: [] });
-    const response = await POST(makeRequest());
+    const response = await POST(makeRequest({ authorization: 'Bearer super-secret' }));
     expect(response.status).toBe(200);
     expect(mockedInit).toHaveBeenCalledWith('https://kelso-kelly-site.vercel.app');
   });
@@ -51,6 +58,7 @@ describe('POST /api/webhooks/setup', () => {
   });
 
   it('reports success:false when initializeWebhooks collects errors', async () => {
+    process.env.WEBHOOK_SETUP_SECRET = 'super-secret';
     mockedInit.mockResolvedValue({
       calendar: null,
       drivePhotos: {},
@@ -58,15 +66,16 @@ describe('POST /api/webhooks/setup', () => {
       cleanup: { stopped: 0, failed: 0, deleted: 0 },
       errors: ['Calendar: boom'],
     });
-    const response = await POST(makeRequest());
+    const response = await POST(makeRequest({ authorization: 'Bearer super-secret' }));
     const json = await response.json();
     expect(json.success).toBe(false);
     expect(json.message).toContain('Some webhooks failed');
   });
 
   it('returns 500 when initializeWebhooks throws', async () => {
+    process.env.WEBHOOK_SETUP_SECRET = 'super-secret';
     mockedInit.mockRejectedValue(new Error('unexpected'));
-    const response = await POST(makeRequest());
+    const response = await POST(makeRequest({ authorization: 'Bearer super-secret' }));
     expect(response.status).toBe(500);
   });
 });

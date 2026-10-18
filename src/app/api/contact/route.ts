@@ -104,7 +104,7 @@ Submitted from kelso-kelly-music contact form
     return NextResponse.json(
       { 
         success: false, 
-        message: error instanceof Error ? error.message : "Failed to send message"
+        message: "Failed to send message"
       },
       { status: 500 }
     );

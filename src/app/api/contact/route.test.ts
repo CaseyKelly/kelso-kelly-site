@@ -84,7 +84,8 @@ describe('POST /api/contact', () => {
     const json = await response.json();
     expect(response.status).toBe(500);
     expect(json.success).toBe(false);
-    expect(json.message).toContain('Resend API unavailable');
+    // Provider error details stay in the server logs, not the response
+    expect(json.message).toBe('Failed to send message');
   });
 
   it('omits the event type from the subject when not provided', async () => {

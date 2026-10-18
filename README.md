@@ -81,7 +81,7 @@ flowchart LR
 ## Engineering highlights
 
 ### ⚡ Real-time sync with self-healing webhooks
-Google Calendar and Drive push change notifications to webhook endpoints the moment content changes. Those subscriptions expire (Calendar after 7 days, Drive after 24 hours), so a cron job renews them automatically. If a channel is lost or never created, the renewal job notices the gap and **recreates it on its next run**, so the system recovers on its own within 12 hours. Failed renewals, duplicates, and expired channels trigger email alerts.
+Google Calendar and Drive push change notifications to webhook endpoints the moment content changes. Those subscriptions expire (Calendar after 7 days, Drive after 24 hours), so a cron job renews them automatically. If a channel is lost or never created, the renewal job notices the gap and **recreates it on its next run**, so the system recovers on its own within 12 hours. Webhook URLs are public, so each incoming notification is checked against the channels stored in the database, and forged requests are rejected before they can trigger any work. Failed renewals, duplicates, and expired channels trigger email alerts.
 
 ### 🔁 Belt-and-suspenders delivery
 Webhooks handle the fast path and Vercel cron jobs act as a safety net, so a dropped notification never means stale content. A database-backed throttle (`sync_log`) keeps webhook bursts from stampeding the sync, and because it lives in Postgres it still works across serverless cold starts.

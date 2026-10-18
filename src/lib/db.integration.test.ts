@@ -13,6 +13,8 @@ import {
   getPastEvents,
   getLastSuccessfulSync,
   logSync,
+  upsertWebhookChannel,
+  isKnownWebhookChannel,
 } from './db';
 
 const TABLES = ['events', 'photos', 'videos', 'sync_log', 'webhook_channels', 'youtube_uploads'];
@@ -241,5 +243,32 @@ describe('getLastSuccessfulSync', () => {
     const lastSync = await getLastSuccessfulSync('calendar');
     expect(lastSync).not.toBeNull();
     expect(lastSync!.getTime()).toBeLessThanOrEqual(Date.now());
+  });
+});
+
+describe('isKnownWebhookChannel', () => {
+  beforeEach(async () => {
+    await upsertWebhookChannel({
+      channel_id: 'calendar-1',
+      resource_type: 'calendar',
+      resource_id: 'res-cal',
+      expiration: Date.now() + 60_000,
+    });
+  });
+
+  it('accepts a notification whose channel, resource, and type all match a stored channel', async () => {
+    expect(await isKnownWebhookChannel('calendar-1', 'res-cal', 'calendar')).toBe(true);
+  });
+
+  it('rejects a known channel ID paired with the wrong resource ID', async () => {
+    expect(await isKnownWebhookChannel('calendar-1', 'forged', 'calendar')).toBe(false);
+  });
+
+  it('rejects a calendar channel presented to a Drive webhook', async () => {
+    expect(await isKnownWebhookChannel('calendar-1', 'res-cal', 'drive')).toBe(false);
+  });
+
+  it('rejects an unknown channel ID', async () => {
+    expect(await isKnownWebhookChannel('nope', 'res-cal', 'calendar')).toBe(false);
   });
 });

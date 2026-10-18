@@ -10,11 +10,10 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(request: NextRequest) {
   try {
-    // Optional: Add authentication
     const authHeader = request.headers.get('authorization');
     const secret = process.env.WEBHOOK_SETUP_SECRET || process.env.REVALIDATE_SECRET;
-    
-    if (secret && authHeader !== `Bearer ${secret}`) {
+
+    if (!secret || authHeader !== `Bearer ${secret}`) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -53,7 +52,7 @@ export async function GET(_request: NextRequest) {
     endpoint: '/api/webhooks/setup',
     method: 'POST',
     description: 'Initialize all Google webhooks (Calendar and Drive)',
-    authentication: 'Bearer token in Authorization header (optional)',
+    authentication: 'Bearer token in Authorization header (WEBHOOK_SETUP_SECRET)',
     note: 'Call this once after deployment to set up webhooks',
   });
 }

@@ -88,6 +88,8 @@ src/app/api/
 
 All sync routes accept `CRON_SECRET` for authentication via Bearer token.
 
+The Google webhook receivers (`webhook-calendar`, `webhook-drive`, `webhook-drive-videos`) verify every non-`sync` notification with `isKnownWebhookChannel()` (the `X-Goog-Channel-ID` + `X-Goog-Resource-ID` pair must match a `webhook_channels` row) and return 403 otherwise, so a forged POST can't force a sync or dispatch the YouTube workflow. `/api/revalidate` and `/api/webhooks/setup` fail closed: they reject every request when their secret env var is unset.
+
 ### Route Groups
 
 The `(site)` route group in `src/app/(site)/` contains public pages and shares a common layout (`layout.tsx`). This allows for a consistent header/footer without affecting API routes.

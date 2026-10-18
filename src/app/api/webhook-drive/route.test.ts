@@ -1,9 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { POST } from './route';
+import { isKnownWebhookChannel } from '@/lib/db';
 import { syncPhotos } from '@/lib/sync';
 import { sendWebhookAlert } from '@/lib/notifications';
 
+vi.mock('@/lib/db', () => ({
+  isKnownWebhookChannel: vi.fn(),
+}));
 vi.mock('@/lib/sync', () => ({
   syncPhotos: vi.fn(),
 }));
@@ -14,11 +18,20 @@ vi.mock('@/lib/notifications', () => ({
 const mockedSync = vi.mocked(syncPhotos);
 const mockedAlert = vi.mocked(sendWebhookAlert);
 
+const mockedIsKnownChannel = vi.mocked(isKnownWebhookChannel);
+
+// Headers Google sends on every notification for a channel we created
+const CHANNEL_HEADERS = { 'x-goog-channel-id': 'channel-1', 'x-goog-resource-id': 'resource-1' };
+
 function makeRequest(headers: Record<string, string>) {
-  return new NextRequest('http://localhost/api/webhook-drive', { method: 'POST', headers });
+  return new NextRequest('http://localhost/api/webhook-drive', {
+    method: 'POST',
+    headers: { ...CHANNEL_HEADERS, ...headers },
+  });
 }
 
 beforeEach(() => {
+  mockedIsKnownChannel.mockReset().mockResolvedValue(true);
   mockedSync.mockReset();
   mockedAlert.mockReset();
   mockedAlert.mockResolvedValue(undefined);
@@ -61,5 +74,28 @@ describe('POST /api/webhook-drive', () => {
     const response = await POST(makeRequest({ 'x-goog-resource-state': 'change' }));
     expect(response.status).toBe(200);
     expect(mockedAlert).toHaveBeenCalled();
+  });
+
+  it('verifies the notification against the stored channel', async () => {
+    await POST(makeRequest({ 'x-goog-resource-state': 'change' }));
+    expect(mockedIsKnownChannel).toHaveBeenCalledWith('channel-1', 'resource-1', 'drive');
+  });
+
+  it('rejects a notification from an unknown channel without doing any work', async () => {
+    mockedIsKnownChannel.mockResolvedValue(false);
+    const response = await POST(makeRequest({ 'x-goog-resource-state': 'change' }));
+    expect(response.status).toBe(403);
+    expect(mockedSync).not.toHaveBeenCalled();
+  });
+
+  it('rejects a notification with no channel headers without hitting the database', async () => {
+    const request = new NextRequest('http://localhost/api/webhook-drive', {
+      method: 'POST',
+      headers: { 'x-goog-resource-state': 'change' },
+    });
+    const response = await POST(request);
+    expect(response.status).toBe(403);
+    expect(mockedIsKnownChannel).not.toHaveBeenCalled();
+    expect(mockedSync).not.toHaveBeenCalled();
   });
 });

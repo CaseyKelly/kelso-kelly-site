@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isKnownWebhookChannel } from '@/lib/db';
 import { syncCalendarEvents } from '@/lib/sync';
 
 export const dynamic = 'force-dynamic';
@@ -28,6 +29,11 @@ export async function POST(request: NextRequest) {
     if (resourceState === 'sync') {
       console.log('Calendar webhook sync message received');
       return NextResponse.json({ received: true });
+    }
+
+    if (!channelId || !resourceId || !(await isKnownWebhookChannel(channelId, resourceId, 'calendar'))) {
+      console.warn('Calendar webhook rejected: unknown channel', { channelId, resourceId });
+      return NextResponse.json({ error: 'Unknown channel' }, { status: 403 });
     }
     
     // Actual change notification - trigger sync

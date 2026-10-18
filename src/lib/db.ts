@@ -533,6 +533,26 @@ export async function getWebhookChannels(): Promise<DbWebhookChannel[]> {
   }));
 }
 
+/**
+ * Whether a push notification's channel/resource IDs match a channel we created.
+ * Webhook URLs are public, so this is what stops a forged notification from
+ * triggering a sync: only Google (and our DB) know a live channel's resource ID.
+ */
+export async function isKnownWebhookChannel(
+  channelId: string,
+  resourceId: string,
+  resourceType: DbWebhookChannel['resource_type']
+): Promise<boolean> {
+  const result = await sql`
+    SELECT 1 FROM webhook_channels
+    WHERE channel_id = ${channelId}
+      AND resource_id = ${resourceId}
+      AND resource_type = ${resourceType}
+    LIMIT 1
+  `;
+  return result.length > 0;
+}
+
 export async function deleteWebhookChannel(channelId: string) {
   return sql`
     DELETE FROM webhook_channels 

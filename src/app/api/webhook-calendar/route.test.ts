@@ -1,19 +1,32 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { POST } from './route';
+import { isKnownWebhookChannel } from '@/lib/db';
 import { syncCalendarEvents } from '@/lib/sync';
 
+vi.mock('@/lib/db', () => ({
+  isKnownWebhookChannel: vi.fn(),
+}));
 vi.mock('@/lib/sync', () => ({
   syncCalendarEvents: vi.fn(),
 }));
 
 const mockedSync = vi.mocked(syncCalendarEvents);
 
+const mockedIsKnownChannel = vi.mocked(isKnownWebhookChannel);
+
+// Headers Google sends on every notification for a channel we created
+const CHANNEL_HEADERS = { 'x-goog-channel-id': 'channel-1', 'x-goog-resource-id': 'resource-1' };
+
 function makeRequest(headers: Record<string, string>) {
-  return new NextRequest('http://localhost/api/webhook-calendar', { method: 'POST', headers });
+  return new NextRequest('http://localhost/api/webhook-calendar', {
+    method: 'POST',
+    headers: { ...CHANNEL_HEADERS, ...headers },
+  });
 }
 
 beforeEach(() => {
+  mockedIsKnownChannel.mockReset().mockResolvedValue(true);
   mockedSync.mockReset();
 });
 
@@ -56,5 +69,28 @@ describe('POST /api/webhook-calendar', () => {
     const json = await response.json();
     expect(response.status).toBe(200);
     expect(json).toEqual({ received: true });
+  });
+
+  it('verifies the notification against the stored channel', async () => {
+    await POST(makeRequest({ 'x-goog-resource-state': 'exists' }));
+    expect(mockedIsKnownChannel).toHaveBeenCalledWith('channel-1', 'resource-1', 'calendar');
+  });
+
+  it('rejects a notification from an unknown channel without doing any work', async () => {
+    mockedIsKnownChannel.mockResolvedValue(false);
+    const response = await POST(makeRequest({ 'x-goog-resource-state': 'exists' }));
+    expect(response.status).toBe(403);
+    expect(mockedSync).not.toHaveBeenCalled();
+  });
+
+  it('rejects a notification with no channel headers without hitting the database', async () => {
+    const request = new NextRequest('http://localhost/api/webhook-calendar', {
+      method: 'POST',
+      headers: { 'x-goog-resource-state': 'exists' },
+    });
+    const response = await POST(request);
+    expect(response.status).toBe(403);
+    expect(mockedIsKnownChannel).not.toHaveBeenCalled();
+    expect(mockedSync).not.toHaveBeenCalled();
   });
 });

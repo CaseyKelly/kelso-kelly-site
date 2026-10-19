@@ -10,9 +10,8 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(req: NextRequest) {
   try {
-    // Optional: Add authentication
     const secret = req.nextUrl.searchParams.get('secret');
-    if (secret && secret !== process.env.REVALIDATE_SECRET) {
+    if (!process.env.REVALIDATE_SECRET || secret !== process.env.REVALIDATE_SECRET) {
       return new NextResponse("Invalid secret", { status: 401 });
     }
 
@@ -45,7 +44,7 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   try {
     const secret = req.nextUrl.searchParams.get('secret');
-    if (secret && secret !== process.env.REVALIDATE_SECRET) {
+    if (!process.env.REVALIDATE_SECRET || secret !== process.env.REVALIDATE_SECRET) {
       return new NextResponse("Invalid secret", { status: 401 });
     }
 

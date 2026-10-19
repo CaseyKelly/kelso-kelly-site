@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isKnownWebhookChannel } from '@/lib/db';
 import { triggerYoutubeSyncWorkflow } from '@/lib/github-actions';
 import { sendWebhookAlert } from '@/lib/notifications';
 
@@ -24,6 +25,11 @@ export async function POST(request: NextRequest) {
 
     if (resourceState === 'sync') {
       return NextResponse.json({ received: true });
+    }
+
+    if (!channelId || !resourceId || !(await isKnownWebhookChannel(channelId, resourceId, 'drive'))) {
+      console.warn('Drive videos webhook rejected: unknown channel', { channelId, resourceId });
+      return NextResponse.json({ error: 'Unknown channel' }, { status: 403 });
     }
 
     if (resourceState === 'change' || resourceState === 'update' || resourceState === 'exists') {

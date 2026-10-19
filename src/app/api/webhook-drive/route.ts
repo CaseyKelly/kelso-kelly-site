@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isKnownWebhookChannel } from '@/lib/db';
 import { syncPhotos } from '@/lib/sync';
 import { sendWebhookAlert } from '@/lib/notifications';
 
@@ -29,6 +30,11 @@ export async function POST(request: NextRequest) {
     if (resourceState === 'sync') {
       console.log('Drive webhook sync message received');
       return NextResponse.json({ received: true });
+    }
+
+    if (!channelId || !resourceId || !(await isKnownWebhookChannel(channelId, resourceId, 'drive'))) {
+      console.warn('Drive webhook rejected: unknown channel', { channelId, resourceId });
+      return NextResponse.json({ error: 'Unknown channel' }, { status: 403 });
     }
     
     // Change notification - trigger photo sync. Trashing a photo arrives as

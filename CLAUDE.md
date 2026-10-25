@@ -25,12 +25,40 @@ npm run dev          # Start dev server on http://localhost:3000
 npm run build        # Production build
 npm start            # Start production server
 npm run lint         # Run ESLint
-npx tsc --noEmit     # Type check without emitting files
+npm run typecheck    # Type check (tsc --noEmit)
+npm run format       # Format with Prettier (format:check to verify only)
 ```
+
+Node 24 (`engines.node` in `package.json`, which CI also reads). Install with `npm ci`; never hand-edit `package-lock.json`, regenerate it with `npm install`.
 
 ### Testing
 
-This project currently has no test suite. If adding tests, place them adjacent to source files using `ComponentName.test.tsx`.
+```bash
+npm test                 # Vitest unit tests (no database needed)
+npm run test:coverage    # Unit tests with v8 coverage (what CI runs)
+npm run test:integration # DB integration tests against a real Postgres
+npm run test:e2e         # Playwright E2E against a production build
+```
+
+- **Unit tests** (`*.test.ts(x)`) live next to their source. They run in the Node environment by default; component tests opt into jsdom with a `// @vitest-environment jsdom` docblock. Run one file with `npm test -- path/to/file.test.ts`.
+- **Integration tests** (`*.integration.test.ts`, `vitest.integration.config.ts`) run the real SQL in `src/lib/db.ts` against Postgres. They need `TEST_DATABASE_URL` (defaults to `postgresql://postgres:postgres@localhost:5432/postgres`, e.g. `docker run --rm -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:18`). Global setup applies `db/schema.sql`, truncates the app tables, and starts `scripts/neon-http-bridge.js`, which speaks Neon's `/sql` HTTP protocol over `pg` so the Neon driver works against plain Postgres. Files run serially because they share one schema.
+- **E2E tests** (`e2e/*.spec.ts`) need the same Postgres. Playwright's `webServer` runs `scripts/e2e-server.js`, which seeds the DB from `db/schema.sql` + `db/test-seed.sql`, starts the bridge, then runs `next build` and `next start` on port 3000 (so a run takes a few minutes). In a sandbox with a preinstalled Chromium, set `PW_CHROMIUM_PATH` to its executable instead of running `npx playwright install`.
+
+### Before you push
+
+Run what CI runs and push only when all of it passes:
+
+```bash
+npm run format:check
+npm run lint
+npm run typecheck
+npm test
+npm run test:integration # needs Postgres (see above)
+npm run build            # needs RESEND_API_KEY, RESEND_FROM_EMAIL, CONTACT_EMAIL set (placeholders are fine)
+npm run test:e2e         # needs Postgres; builds the app itself
+```
+
+`npm run format` rewrites files in place. The one-time Prettier reformat is listed in `.git-blame-ignore-revs`; run `git config blame.ignoreRevsFile .git-blame-ignore-revs` so local `git blame` skips it.
 
 ## Architecture Overview
 
@@ -86,14 +114,17 @@ src/app/api/
   webhook-drive/route.ts     # Google Drive webhook receiver (photos folder)
   webhook-drive-videos/route.ts # Google Drive webhook receiver (videos folder) - triggers GitHub Actions, doesn't sync in-request
   contact/route.ts           # Contact form submission handler
-  cron/renew-webhooks/       # Daily webhook renewal (Vercel cron)
+  cron/renew-webhooks/       # Daily webhook renewal, duplicate cleanup, sync_log cleanup (Vercel cron)
+  cron/renew-drive-webhooks/ # 12-hourly Drive webhook renewal + self-healing (Vercel cron)
   webhooks/setup/            # Initial webhook setup endpoint
+  webhooks/status/           # Registered webhooks with expiry info
+  webhooks/cleanup/          # Stop all webhooks, optionally re-create them
   revalidate/                # Manual ISR revalidation trigger
 ```
 
-All sync routes accept `CRON_SECRET` for authentication via Bearer token.
+The sync and cron routes require `Authorization: Bearer <CRON_SECRET>` when `CRON_SECRET` is set (they allow the request when it is unset).
 
-The Google webhook receivers (`webhook-calendar`, `webhook-drive`, `webhook-drive-videos`) verify every non-`sync` notification with `isKnownWebhookChannel()` (the `X-Goog-Channel-ID` + `X-Goog-Resource-ID` pair must match a `webhook_channels` row) and return 403 otherwise, so a forged POST can't force a sync or dispatch the YouTube workflow. `/api/revalidate` and `/api/webhooks/setup` fail closed: they reject every request when their secret env var is unset.
+The Google webhook receivers (`webhook-calendar`, `webhook-drive`, `webhook-drive-videos`) verify every non-`sync` notification with `isKnownWebhookChannel()` (the `X-Goog-Channel-ID` + `X-Goog-Resource-ID` pair must match a `webhook_channels` row) and return 403 otherwise, so a forged POST can't force a sync or dispatch the YouTube workflow. `/api/revalidate` and `/api/webhooks/{setup,status,cleanup}` fail closed: they reject every request when their secret env var is unset.
 
 ### Route Groups
 
@@ -161,10 +192,11 @@ GITHUB_ACTIONS_TOKEN                # Fine-grained GitHub PAT, Actions:read+writ
 
 Configured in `vercel.json`:
 
-- **Daily (00:00)**: Renew webhook subscriptions (`/api/cron/renew-webhooks`)
-- **Every 5 minutes**: Sync calendar events (`/api/sync-calendar`)
-- **Every 10 minutes**: Sync photos (`/api/sync-photos`)
-- **Every hour**: Sync videos (`/api/sync-videos`)
+- **Daily (00:00 UTC)**: Renew webhook subscriptions (`/api/cron/renew-webhooks`)
+- **Every 12 hours**: Renew Drive webhooks and recreate missing ones (`/api/cron/renew-drive-webhooks`)
+- **Every 2 hours**: Sync calendar events (`/api/sync-calendar`)
+- **Every 6 hours**: Sync photos (`/api/sync-photos`)
+- **Every 4 hours**: Sync videos (`/api/sync-videos`)
 
 Webhooks provide real-time updates; cron jobs serve as a fallback mechanism.
 

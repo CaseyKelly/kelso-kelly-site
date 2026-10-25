@@ -54,21 +54,37 @@ npm run dev          # Start dev server on http://localhost:3000
 npm run build        # Production build
 npm start            # Start production server
 npm run lint         # Run ESLint on all files
+npm run typecheck    # Type check (tsc --noEmit)
+npm run format       # Format with Prettier; format:check only verifies
 ```
+
+Node 24 (`engines.node` in `package.json`; CI reads the version from there). Install with `npm ci`; never hand-edit `package-lock.json`, regenerate it with `npm install`.
 
 ### Testing
 
-**Note:** This project currently has no test suite. When adding tests:
+```bash
+npm test                 # Vitest unit tests, no database needed
+npm run test:coverage    # Same, with v8 coverage (what CI runs)
+npm run test:integration # Vitest DB integration tests, needs Postgres
+npm run test:e2e         # Playwright E2E, needs Postgres
+```
 
-- Use Jest or Vitest for unit/integration tests
-- Use Playwright for E2E tests
-- Place tests adjacent to source files: `ComponentName.test.tsx`
-- Run single test: `npm test -- path/to/file.test.ts`
+- **Unit tests** are `*.test.ts(x)` files next to their source. The default environment is Node; component tests opt into jsdom with a `// @vitest-environment jsdom` docblock. Run one file with `npm test -- path/to/file.test.ts`.
+- **Integration tests** are `*.integration.test.ts` files (config: `vitest.integration.config.ts`). They need a disposable Postgres at `TEST_DATABASE_URL` (default `postgresql://postgres:postgres@localhost:5432/postgres`, e.g. `docker run --rm -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:18`). Setup loads `db/schema.sql`, truncates the app tables and starts `scripts/neon-http-bridge.js`, so the unmodified Neon driver in `src/lib/db.ts` runs against plain Postgres.
+- **E2E tests** live in `e2e/`. Playwright's `webServer` runs `scripts/e2e-server.js`, which seeds the same Postgres from `db/schema.sql` + `db/test-seed.sql`, starts the bridge, then runs `next build` and `next start`. With a preinstalled Chromium, set `PW_CHROMIUM_PATH` to its executable instead of running `npx playwright install`.
 
-### Type Checking
+### Before You Push
+
+Run what CI runs, and push only when all of it passes:
 
 ```bash
-npx tsc --noEmit    # Type check all files without emitting
+npm run format:check     # fix with `npm run format`
+npm run lint
+npm run typecheck
+npm test
+npm run test:integration # needs Postgres
+npm run build            # needs RESEND_API_KEY, RESEND_FROM_EMAIL, CONTACT_EMAIL (placeholders are fine)
+npm run test:e2e         # needs Postgres; builds the app itself
 ```
 
 ## Code Style Guidelines
@@ -275,7 +291,7 @@ db/
 Required for local development (in `.env.local`):
 
 - `DATABASE_URL` - Neon PostgreSQL connection string
-- `GOOGLE_CLIENT_EMAIL` - Service account email
+- `GOOGLE_SERVICE_ACCOUNT_EMAIL` - Service account email
 - `GOOGLE_PRIVATE_KEY` - Service account private key
 - `GOOGLE_CALENDAR_ID` - Calendar to sync from
 - `GOOGLE_DRIVE_PHOTOS_FOLDER_ID` - Photos folder ID
@@ -315,10 +331,11 @@ export const maxDuration = 60; // Max execution time
 
 Configured in `vercel.json`:
 
-- Renew webhooks: Daily at midnight
-- Sync calendar: Every 5 minutes
-- Sync photos: Every 10 minutes
-- Sync videos: Every hour
+- Renew webhooks: Daily at 00:00 UTC
+- Renew Drive webhooks (and recreate missing ones): Every 12 hours
+- Sync calendar: Every 2 hours
+- Sync photos: Every 6 hours
+- Sync videos: Every 4 hours
 
 ## Resources
 

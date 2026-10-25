@@ -112,7 +112,22 @@ jobs:
           node-version-file: package.json
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      # Reuse the Chromium download across runs, keyed on the installed
+      # Playwright version so a bump fetches the matching browser. On a hit
+      # the install is skipped entirely (ubuntu-latest already has Chromium's
+      # OS libraries), same as fantasyphish's e2e workflow.
+      - name: Get Playwright version
+        id: playwright-version
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v7
         if: failure()

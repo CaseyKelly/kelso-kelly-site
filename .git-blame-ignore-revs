@@ -1,0 +1,5 @@
+# Commits that git blame should skip (GitHub's blame view reads this file
+# automatically). Locally: git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# Format codebase with Prettier
+5084c2c23c2119468bc75d12982c374f46e84429

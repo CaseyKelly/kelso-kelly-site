@@ -90,6 +90,10 @@ All sync routes accept `CRON_SECRET` for authentication via Bearer token.
 
 The Google webhook receivers (`webhook-calendar`, `webhook-drive`, `webhook-drive-videos`) verify every non-`sync` notification with `isKnownWebhookChannel()` (the `X-Goog-Channel-ID` + `X-Goog-Resource-ID` pair must match a `webhook_channels` row) and return 403 otherwise, so a forged POST can't force a sync or dispatch the YouTube workflow. `/api/revalidate` and `/api/webhooks/setup` fail closed: they reject every request when their secret env var is unset.
 
+`/api/contact` drops bot submissions with a fake 200 (honeypot field `website` filled in, or `formElapsedMs` missing or under 3s; see `src/lib/contact-spam.ts`) and rate limits real ones to 5 per IP per hour via the `contact_rate_limits` table (one atomic upsert, fails open on DB errors).
+
+Every cron in `vercel.json` has a Sentry cron monitor in `src/lib/cron-monitor.ts` (`CRON_MONITORS`, whose schedules a test keeps in sync with `vercel.json`). Route `GET` handlers check auth first, then run the job through `withCronMonitor()`, which only checks in for `user-agent: vercel-cron` requests and marks the check-in failed on a non-2xx response or a `success: false` body.
+
 ### Route Groups
 
 The `(site)` route group in `src/app/(site)/` contains public pages and shares a common layout (`layout.tsx`). This allows for a consistent header/footer without affecting API routes.

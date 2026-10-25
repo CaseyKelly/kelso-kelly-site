@@ -3,6 +3,7 @@ import { getWebhookChannels, deleteWebhookChannel } from '@/lib/db';
 import { setupDriveWebhook, getExpectedDriveWebhooks } from '@/lib/webhooks';
 import { stopWatchingFolder } from '@/lib/google-drive';
 import { sendWebhookAlert } from '@/lib/notifications';
+import { CRON_MONITORS, withCronMonitor } from '@/lib/cron-monitor';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,13 +13,17 @@ export const dynamic = 'force-dynamic';
  * Runs every 12 hours for safer renewal margin
  */
 export async function GET(request: NextRequest) {
-  try {
-    // Verify Vercel Cron authentication
-    const authHeader = request.headers.get('authorization');
-    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  // Verify Vercel Cron authentication
+  const authHeader = request.headers.get('authorization');
+  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
+  return withCronMonitor(request, CRON_MONITORS['/api/cron/renew-drive-webhooks'], runDriveWebhookRenewalJob);
+}
+
+async function runDriveWebhookRenewalJob(): Promise<NextResponse> {
+  try {
     console.log('Running Drive webhook renewal cron...');
     const channels = await getWebhookChannels();
     const now = Date.now();

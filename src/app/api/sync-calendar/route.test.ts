@@ -7,6 +7,25 @@ vi.mock('@/lib/sync', () => ({
   syncCalendarEvents: vi.fn(),
 }));
 
+// Records each check-in's outcome the way Sentry would: 'ok' when the
+// monitored callback resolves, 'error' when it rejects.
+const { checkIns } = vi.hoisted(() => ({ checkIns: [] as { slug: string; status: string }[] }));
+vi.mock('@sentry/nextjs', () => ({
+  withMonitor: vi.fn((slug: string, callback: () => Promise<unknown>) =>
+    callback().then(
+      (r) => {
+        checkIns.push({ slug, status: 'ok' });
+        return r;
+      },
+      (e) => {
+        checkIns.push({ slug, status: 'error' });
+        throw e;
+      }
+    )
+  ),
+  flush: vi.fn().mockResolvedValue(true),
+}));
+
 const mockedSync = vi.mocked(syncCalendarEvents);
 
 function makeRequest(headers: Record<string, string> = {}) {
@@ -15,6 +34,7 @@ function makeRequest(headers: Record<string, string> = {}) {
 
 beforeEach(() => {
   mockedSync.mockReset();
+  checkIns.length = 0;
   delete process.env.CRON_SECRET;
 });
 
@@ -67,5 +87,41 @@ describe('POST /api/sync-calendar', () => {
     mockedSync.mockResolvedValue({ success: true, message: 'ok' });
     const response = await POST(makeRequest({ authorization: 'Bearer super-secret' }));
     expect(response.status).toBe(200);
+  });
+});
+
+describe('Sentry cron monitoring', () => {
+  const cronHeaders = { 'user-agent': 'vercel-cron/1.0', authorization: 'Bearer super-secret' };
+
+  beforeEach(() => {
+    process.env.CRON_SECRET = 'super-secret';
+  });
+
+  it('checks in ok for a successful Vercel Cron run', async () => {
+    mockedSync.mockResolvedValue({ success: true, message: 'ok' });
+    const response = await GET(makeRequest(cronHeaders));
+    expect(response.status).toBe(200);
+    expect(checkIns).toEqual([{ slug: 'sync-calendar', status: 'ok' }]);
+  });
+
+  it('checks in as failed when the sync reports failure, still returning the 500', async () => {
+    mockedSync.mockResolvedValue({ success: false, message: 'Calendar API down' });
+    const response = await GET(makeRequest(cronHeaders));
+    expect(response.status).toBe(500);
+    expect((await response.json()).message).toBe('Calendar API down');
+    expect(checkIns).toEqual([{ slug: 'sync-calendar', status: 'error' }]);
+  });
+
+  it('does not check in for a request that fails auth', async () => {
+    const response = await GET(makeRequest({ ...cronHeaders, authorization: 'Bearer wrong' }));
+    expect(response.status).toBe(401);
+    expect(checkIns).toEqual([]);
+  });
+
+  it('does not check in for manual or webhook-triggered runs', async () => {
+    mockedSync.mockResolvedValue({ success: true, message: 'ok' });
+    await GET(makeRequest({ authorization: 'Bearer super-secret' }));
+    await POST(makeRequest({ authorization: 'Bearer super-secret', 'user-agent': 'vercel-cron/1.0' }));
+    expect(checkIns).toEqual([]);
   });
 });

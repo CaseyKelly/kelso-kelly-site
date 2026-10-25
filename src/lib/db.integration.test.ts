@@ -15,9 +15,10 @@ import {
   logSync,
   upsertWebhookChannel,
   isKnownWebhookChannel,
+  incrementContactRateLimit,
 } from './db';
 
-const TABLES = ['events', 'photos', 'videos', 'sync_log', 'webhook_channels', 'youtube_uploads'];
+const TABLES = ['events', 'photos', 'videos', 'sync_log', 'webhook_channels', 'youtube_uploads', 'contact_rate_limits'];
 
 beforeEach(async () => {
   await sql.query(`TRUNCATE ${TABLES.join(', ')} RESTART IDENTITY CASCADE`, []);
@@ -270,5 +271,41 @@ describe('isKnownWebhookChannel', () => {
 
   it('rejects an unknown channel ID', async () => {
     expect(await isKnownWebhookChannel('nope', 'res-cal', 'calendar')).toBe(false);
+  });
+});
+
+describe('incrementContactRateLimit', () => {
+  it('starts a window at 1 and counts up within it', async () => {
+    const first = await incrementContactRateLimit('203.0.113.1', 3600);
+    expect(first.count).toBe(1);
+    expect(first.retryAfterSeconds).toBeGreaterThan(3590);
+    expect(first.retryAfterSeconds).toBeLessThanOrEqual(3600);
+
+    const second = await incrementContactRateLimit('203.0.113.1', 3600);
+    expect(second.count).toBe(2);
+  });
+
+  it('counts each IP separately', async () => {
+    await incrementContactRateLimit('203.0.113.1', 3600);
+    await incrementContactRateLimit('203.0.113.1', 3600);
+    const other = await incrementContactRateLimit('203.0.113.2', 3600);
+    expect(other.count).toBe(1);
+  });
+
+  it('resets the count once the window has expired', async () => {
+    await incrementContactRateLimit('203.0.113.1', 3600);
+    await incrementContactRateLimit('203.0.113.1', 3600);
+    await sql`UPDATE contact_rate_limits SET window_start = NOW() - INTERVAL '2 hours' WHERE ip = '203.0.113.1'`;
+
+    const afterReset = await incrementContactRateLimit('203.0.113.1', 3600);
+    expect(afterReset.count).toBe(1);
+    expect(afterReset.retryAfterSeconds).toBeGreaterThan(3590);
+  });
+
+  it('counts concurrent requests atomically', async () => {
+    const results = await Promise.all(
+      Array.from({ length: 10 }, () => incrementContactRateLimit('203.0.113.3', 3600))
+    );
+    expect(results.map((r) => r.count).sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
   });
 });

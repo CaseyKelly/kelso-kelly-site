@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { renewWebhooks } from '@/lib/webhooks';
 import { cleanupOldSyncLogs, getWebhookChannels, deleteWebhookChannel } from '@/lib/db';
 import { sendWebhookAlert } from '@/lib/notifications';
+import { CRON_MONITORS, withCronMonitor } from '@/lib/cron-monitor';
 import { stopWatchingCalendar } from '@/lib/google-calendar';
 import { stopWatchingFolder } from '@/lib/google-drive';
 
@@ -13,13 +14,17 @@ export const dynamic = 'force-dynamic';
  * Runs daily via Vercel Cron
  */
 export async function GET(request: NextRequest) {
-  try {
-    // Verify this is called by Vercel Cron
-    const authHeader = request.headers.get('authorization');
-    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  // Verify this is called by Vercel Cron
+  const authHeader = request.headers.get('authorization');
+  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
+  return withCronMonitor(request, CRON_MONITORS['/api/cron/renew-webhooks'], runWebhookRenewalJob);
+}
+
+async function runWebhookRenewalJob(): Promise<NextResponse> {
+  try {
     console.log('Running webhook renewal cron job...');
 
     // Detect and cleanup duplicates FIRST

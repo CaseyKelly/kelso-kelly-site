@@ -94,3 +94,12 @@ CREATE TABLE IF NOT EXISTS youtube_uploads (
 );
 
 CREATE INDEX IF NOT EXISTS idx_youtube_uploads_drive_file_id ON youtube_uploads(drive_file_id);
+
+-- Contact form rate limit (fixed window per client IP). One row per IP,
+-- bumped atomically by incrementContactRateLimit() in src/lib/db.ts so the
+-- limit holds across serverless instances.
+CREATE TABLE IF NOT EXISTS contact_rate_limits (
+  ip VARCHAR(64) PRIMARY KEY,
+  window_start TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  request_count INTEGER NOT NULL DEFAULT 1
+);

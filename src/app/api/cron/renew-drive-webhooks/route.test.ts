@@ -21,6 +21,25 @@ vi.mock('@/lib/notifications', () => ({
   sendWebhookAlert: vi.fn(),
 }));
 
+// Records each check-in's outcome the way Sentry would: 'ok' when the
+// monitored callback resolves, 'error' when it rejects.
+const { checkIns } = vi.hoisted(() => ({ checkIns: [] as { slug: string; status: string }[] }));
+vi.mock('@sentry/nextjs', () => ({
+  withMonitor: vi.fn((slug: string, callback: () => Promise<unknown>) =>
+    callback().then(
+      (r) => {
+        checkIns.push({ slug, status: 'ok' });
+        return r;
+      },
+      (e) => {
+        checkIns.push({ slug, status: 'error' });
+        throw e;
+      }
+    )
+  ),
+  flush: vi.fn().mockResolvedValue(true),
+}));
+
 const mockedGetChannels = vi.mocked(getWebhookChannels);
 const mockedDelete = vi.mocked(deleteWebhookChannel);
 const mockedSetupDrive = vi.mocked(setupDriveWebhook);
@@ -51,6 +70,7 @@ beforeEach(() => {
   mockedExpected.mockReset().mockReturnValue([]);
   mockedStopFolder.mockReset().mockResolvedValue(undefined as never);
   mockedAlert.mockReset().mockResolvedValue(undefined);
+  checkIns.length = 0;
   delete process.env.CRON_SECRET;
 });
 
@@ -201,5 +221,30 @@ describe('GET /api/cron/renew-drive-webhooks', () => {
     expect(mockedAlert).toHaveBeenCalledWith(
       expect.objectContaining({ message: 'Drive webhook renewal cron failed' })
     );
+  });
+});
+
+describe('Sentry cron monitoring for renew-drive-webhooks', () => {
+  function cronRequest() {
+    return makeRequest({ 'user-agent': 'vercel-cron/1.0' });
+  }
+
+  it('checks in ok when every webhook is healthy', async () => {
+    mockedGetChannels.mockResolvedValue([] as never);
+    await GET(cronRequest());
+    expect(checkIns).toEqual([{ slug: 'renew-drive-webhooks', status: 'ok' }]);
+  });
+
+  it('checks in as failed when a renewal fails, even though the response is a 200', async () => {
+    mockedExpected.mockReturnValue([
+      { webhookUrl: 'https://example.com/api/webhook-drive', folderId: 'photos-folder' },
+    ]);
+    mockedGetChannels.mockResolvedValue([] as never);
+    mockedSetupDrive.mockRejectedValue(new Error('forbidden'));
+
+    const response = await GET(cronRequest());
+    expect(response.status).toBe(200);
+    expect((await response.json()).success).toBe(false);
+    expect(checkIns).toEqual([{ slug: 'renew-drive-webhooks', status: 'error' }]);
   });
 });

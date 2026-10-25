@@ -105,7 +105,8 @@ async function runWebhookRenewalJob(): Promise<NextResponse> {
     console.log(`Cleaned up ${deletedCount} old sync logs`);
 
     return NextResponse.json({
-      success: true,
+      // renewWebhooks catches per-channel errors, so surface them here for the cron monitor
+      success: results.failed.length === 0,
       renewed: results.renewed,
       failed: results.failed,
       duplicatesCleaned: duplicatesToDelete.length,

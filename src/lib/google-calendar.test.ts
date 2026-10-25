@@ -21,7 +21,11 @@ const { mockEventsList, mockEventsWatch, mockChannelsStop } = vi.hoisted(() => (
 
 vi.mock('googleapis', () => ({
   google: {
-    auth: { GoogleAuth: vi.fn().mockImplementation(function GoogleAuth() { return {}; }) },
+    auth: {
+      GoogleAuth: vi.fn().mockImplementation(function GoogleAuth() {
+        return {};
+      }),
+    },
     calendar: vi.fn(() => ({
       events: { list: mockEventsList, watch: mockEventsWatch },
       channels: { stop: mockChannelsStop },
@@ -87,9 +91,7 @@ describe('parseDescription', () => {
   });
 
   it('picks the first matching URL when multiple URLs are present', () => {
-    const result = parseDescription(
-      'Info: https://kelsokellymusic.com and tickets: https://eventbrite.com/e/1'
-    );
+    const result = parseDescription('Info: https://kelsokellymusic.com and tickets: https://eventbrite.com/e/1');
     expect(result.ticketUrl).toBe('https://eventbrite.com/e/1');
   });
 });
@@ -181,7 +183,10 @@ describe('fetchAllCalendarEvents (against a mocked googleapis client)', () => {
   it('follows nextPageToken across multiple pages and combines the results', async () => {
     mockEventsList
       .mockResolvedValueOnce({
-        data: { items: [{ id: 'evt-1', summary: 'Page 1 Event', start: { date: '2026-08-15' } }], nextPageToken: 'page-2' },
+        data: {
+          items: [{ id: 'evt-1', summary: 'Page 1 Event', start: { date: '2026-08-15' } }],
+          nextPageToken: 'page-2',
+        },
       })
       .mockResolvedValueOnce({
         data: { items: [{ id: 'evt-2', summary: 'Page 2 Event', start: { date: '2026-08-16' } }] },

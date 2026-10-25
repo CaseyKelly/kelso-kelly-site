@@ -67,7 +67,7 @@ reflect the outcome accurately. Also flag:
 
 - Deletion logic that doesn't carry a safety guard analogous to the one in
   `syncCalendarEvents` (skips bulk deletion when it would remove ≥5 items
-  *and* >20% of existing rows) — bulk deletes from a sync diff are usually a
+  _and_ >20% of existing rows) — bulk deletes from a sync diff are usually a
   sign of a pagination or API bug, not real user intent.
 - Removing or weakening throttling (`shouldSync(...)`) without a `force`
   override for webhook-triggered calls — cron and webhook paths both call

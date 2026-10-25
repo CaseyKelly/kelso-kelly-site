@@ -48,10 +48,7 @@ function getServiceAccountAuth(scopes) {
 }
 
 function getYoutubeAuth() {
-  const oauth2Client = new google.auth.OAuth2(
-    process.env.YOUTUBE_CLIENT_ID,
-    process.env.YOUTUBE_CLIENT_SECRET
-  );
+  const oauth2Client = new google.auth.OAuth2(process.env.YOUTUBE_CLIENT_ID, process.env.YOUTUBE_CLIENT_SECRET);
   oauth2Client.setCredentials({ refresh_token: process.env.YOUTUBE_REFRESH_TOKEN });
   return oauth2Client;
 }
@@ -147,10 +144,7 @@ async function main() {
     console.log(`Uploading "${file.name}" to YouTube...`);
     const title = stripExtension(file.name);
 
-    const driveStream = await drive.files.get(
-      { fileId: file.id, alt: 'media' },
-      { responseType: 'stream' }
-    );
+    const driveStream = await drive.files.get({ fileId: file.id, alt: 'media' }, { responseType: 'stream' });
 
     const uploadResponse = await youtube.videos.insert({
       part: 'snippet,status',

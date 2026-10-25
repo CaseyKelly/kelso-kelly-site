@@ -12,10 +12,10 @@ export async function setupCalendarWebhook(webhookUrl: string) {
   }
 
   const channelId = `calendar-${Date.now()}`;
-  
+
   try {
     const result = await watchCalendar(webhookUrl, channelId);
-    
+
     // Store in database
     await upsertWebhookChannel({
       channel_id: result.channelId,
@@ -23,7 +23,7 @@ export async function setupCalendarWebhook(webhookUrl: string) {
       resource_id: result.resourceId,
       expiration: result.expiration,
     });
-    
+
     console.log('Calendar webhook set up:', result);
     return result;
   } catch (error) {
@@ -104,41 +104,44 @@ export async function renewWebhooks(baseUrl: string) {
   const channels = await getWebhookChannels();
   const now = Date.now();
   const renewalThreshold = 24 * 60 * 60 * 1000; // 24 hours
-  
+
   const results = {
     renewed: [] as string[],
     failed: [] as string[],
   };
-  
+
   for (const channel of channels) {
     // Skip Drive webhooks - they're handled by dedicated cron every 12 hours
     if (channel.resource_type === 'drive') {
       console.log(`Skipping Drive webhook ${channel.channel_id} (handled by dedicated cron)`);
       continue;
     }
-    
+
     const timeUntilExpiration = channel.expiration - now;
-    
+
     // If expiring within threshold, renew
     if (timeUntilExpiration < renewalThreshold) {
       try {
         console.log(`Renewing ${channel.resource_type} webhook...`);
-        
+
         // Stop old webhook (handles 404 gracefully if already expired)
         try {
           await stopWatchingCalendar(channel.channel_id, channel.resource_id);
         } catch (stopError) {
-          console.warn(`Warning: Could not stop old ${channel.resource_type} channel, continuing with renewal...`, stopError);
+          console.warn(
+            `Warning: Could not stop old ${channel.resource_type} channel, continuing with renewal...`,
+            stopError
+          );
         }
 
         // Set up new webhook FIRST (before deleting old record)
         // This ensures if setup fails, the old record exists for retry on next cron run
         const result = await setupCalendarWebhook(`${baseUrl}/api/webhook-calendar`);
         const newChannelId: string = result.channelId;
-        
+
         // Now that new webhook is created, delete old channel from database
         await deleteWebhookChannel(channel.channel_id);
-        
+
         results.renewed.push(channel.channel_id);
         console.log(`Successfully renewed ${channel.resource_type} webhook (${channel.channel_id} -> ${newChannelId})`);
       } catch (error) {
@@ -147,7 +150,7 @@ export async function renewWebhooks(baseUrl: string) {
       }
     }
   }
-  
+
   return results;
 }
 
@@ -158,9 +161,9 @@ export async function renewWebhooks(baseUrl: string) {
 export async function cleanupAllWebhooks() {
   const channels = await getWebhookChannels();
   const results = { stopped: 0, failed: 0, deleted: 0 };
-  
+
   console.log(`Starting cleanup of ${channels.length} webhook channel(s)...`);
-  
+
   for (const channel of channels) {
     try {
       if (channel.resource_type === 'calendar') {
@@ -174,7 +177,7 @@ export async function cleanupAllWebhooks() {
       console.warn(`Failed to stop channel ${channel.channel_id}:`, error);
       results.failed++;
     }
-    
+
     // Delete from database even if stop failed (channel might be already expired)
     try {
       await deleteWebhookChannel(channel.channel_id);
@@ -186,7 +189,7 @@ export async function cleanupAllWebhooks() {
       // Continue to next channel - don't let DB errors abort entire cleanup
     }
   }
-  
+
   console.log('Cleanup completed:', results);
   return results;
 }
@@ -200,7 +203,7 @@ export async function initializeWebhooks(baseUrl: string) {
   console.log('Cleaning up existing webhooks before setup...');
   const cleanup = await cleanupAllWebhooks();
   console.log(`Cleaned up ${cleanup.deleted} existing webhook(s)`);
-  
+
   const results = {
     calendar: null as unknown,
     drivePhotos: null as unknown,

@@ -62,9 +62,7 @@ describe('upsertEvent', () => {
     const second = await upsertEvent({ ...baseEvent, title: 'Live at The Aggie (Rescheduled)' });
     expect(second.action).toBe('updated');
     expect(second.event.title).toBe('Live at The Aggie (Rescheduled)');
-    expect(new Date(second.event.updated_at).getTime()).toBeGreaterThan(
-      new Date(first.event.updated_at).getTime()
-    );
+    expect(new Date(second.event.updated_at).getTime()).toBeGreaterThan(new Date(first.event.updated_at).getTime());
   });
 
   it('treats a null-to-value change on an optional field as a change', async () => {
@@ -160,24 +158,27 @@ describe('id/URL set getters used for sync diffing', () => {
       optimized_url: 'https://blob.example.com/b.webp',
     });
 
-    expect(await getPhotoImageDataByDriveId()).toEqual(new Map([
-      ['photo-a', { optimized_url: 'https://blob.example.com/a.webp', width: 1920, height: 1080 }],
-      ['photo-b', { optimized_url: 'https://blob.example.com/b.webp', width: null, height: null }],
-    ]));
+    expect(await getPhotoImageDataByDriveId()).toEqual(
+      new Map([
+        ['photo-a', { optimized_url: 'https://blob.example.com/a.webp', width: 1920, height: 1080 }],
+        ['photo-b', { optimized_url: 'https://blob.example.com/b.webp', width: null, height: null }],
+      ])
+    );
   });
 });
 
 describe('updatePhotosMetadata', () => {
-  const insertPhoto = (id: string, order_index: number) => upsertPhoto({
-    google_drive_id: id,
-    title: id,
-    category: 'performance',
-    alt_text: id,
-    optimized_url: `https://blob.example.com/${id}.webp`,
-    width: 800,
-    height: 600,
-    order_index,
-  });
+  const insertPhoto = (id: string, order_index: number) =>
+    upsertPhoto({
+      google_drive_id: id,
+      title: id,
+      category: 'performance',
+      alt_text: id,
+      optimized_url: `https://blob.example.com/${id}.webp`,
+      width: 800,
+      height: 600,
+      order_index,
+    });
 
   it('updates only changed rows in one call, preserving image data and updated_at of unchanged rows', async () => {
     await insertPhoto('photo-a', 0);

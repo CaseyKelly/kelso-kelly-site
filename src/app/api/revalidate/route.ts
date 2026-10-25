@@ -1,5 +1,5 @@
-import { revalidatePath } from "next/cache";
-import { type NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from 'next/cache';
+import { type NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
   try {
     const secret = req.nextUrl.searchParams.get('secret');
     if (!process.env.REVALIDATE_SECRET || secret !== process.env.REVALIDATE_SECRET) {
-      return new NextResponse("Invalid secret", { status: 401 });
+      return new NextResponse('Invalid secret', { status: 401 });
     }
 
     const body = await req.json();
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
 
     // Revalidate specific path or multiple paths
     const pathsToRevalidate = paths || (path ? [path] : ['/schedule', '/media']);
-    
+
     for (const p of pathsToRevalidate) {
       revalidatePath(p);
       console.log(`Revalidated path: ${p}`);
@@ -45,11 +45,11 @@ export async function GET(req: NextRequest) {
   try {
     const secret = req.nextUrl.searchParams.get('secret');
     if (!process.env.REVALIDATE_SECRET || secret !== process.env.REVALIDATE_SECRET) {
-      return new NextResponse("Invalid secret", { status: 401 });
+      return new NextResponse('Invalid secret', { status: 401 });
     }
 
     const path = req.nextUrl.searchParams.get('path') || '/';
-    
+
     revalidatePath(path);
     console.log(`Revalidated path: ${path}`);
 

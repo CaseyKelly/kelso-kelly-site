@@ -1,6 +1,6 @@
-import type * as Sentry from "@sentry/nextjs";
+import type * as Sentry from '@sentry/nextjs';
 
-type DataCollection = NonNullable<Parameters<typeof Sentry.init>[0]>["dataCollection"];
+type DataCollection = NonNullable<Parameters<typeof Sentry.init>[0]>['dataCollection'];
 
 /**
  * Sentry v11 collects user info, cookies, headers, HTTP bodies, DB query
@@ -11,7 +11,7 @@ type DataCollection = NonNullable<Parameters<typeof Sentry.init>[0]>["dataCollec
 export const sentryDataCollection: DataCollection = {
   userInfo: false,
   cookies: false,
-  httpHeaders: { allow: ["accept", "content-type", "user-agent"] },
+  httpHeaders: { allow: ['accept', 'content-type', 'user-agent'] },
   httpBodies: [],
   databaseQueryData: false,
   stackFrameVariables: false,

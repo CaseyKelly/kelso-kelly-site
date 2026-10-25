@@ -9,7 +9,7 @@ export const maxDuration = 60; // Allow up to 60 seconds for photo sync to compl
 /**
  * POST /api/webhook-drive
  * Receives webhook notifications from Google Drive when folder contents change
- * 
+ *
  * Google sends notifications for file changes in the watched folder
  */
 export async function POST(request: NextRequest) {
@@ -18,14 +18,14 @@ export async function POST(request: NextRequest) {
     const channelId = request.headers.get('x-goog-channel-id');
     const resourceId = request.headers.get('x-goog-resource-id');
     const changedField = request.headers.get('x-goog-changed');
-    
+
     console.log('Drive webhook received:', {
       resourceState,
       channelId,
       resourceId,
       changedField,
     });
-    
+
     // Sync message - just acknowledge
     if (resourceState === 'sync') {
       console.log('Drive webhook sync message received');
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
       console.warn('Drive webhook rejected: unknown channel', { channelId, resourceId });
       return NextResponse.json({ error: 'Unknown channel' }, { status: 403 });
     }
-    
+
     // Change notification - trigger photo sync. Trashing a photo arrives as
     // 'trash' (not 'update'), so it must be included or deletions only reach
     // the site at the next cron run.
@@ -50,55 +50,61 @@ export async function POST(request: NextRequest) {
         const syncStartTime = Date.now();
         const result = await syncPhotos(true);
         const syncDuration = Date.now() - syncStartTime;
-        
+
         console.log(`Photo sync completed in ${syncDuration}ms:`, result);
-        
+
         if (result.success) {
-          return NextResponse.json({ 
-            received: true, 
+          return NextResponse.json({
+            received: true,
             synced: true,
             result: result.message,
             details: result.details,
-            duration: syncDuration
+            duration: syncDuration,
           });
         } else {
           console.error('Photo sync failed:', result.message);
-          
+
           // Send email alert about sync failure
           await sendWebhookAlert({
             type: 'renewal_failed',
             message: 'Drive webhook triggered but photo sync failed',
-            details: { 
+            details: {
               error: result.message,
               details: result.details,
-              duration: syncDuration 
+              duration: syncDuration,
             },
           });
-          
-          return NextResponse.json({ 
-            received: true, 
-            synced: false,
-            error: result.message 
-          }, { status: 200 }); // Still return 200 to prevent Google retries
+
+          return NextResponse.json(
+            {
+              received: true,
+              synced: false,
+              error: result.message,
+            },
+            { status: 200 }
+          ); // Still return 200 to prevent Google retries
         }
       } catch (error) {
         console.error('Photo sync threw an error:', error);
-        
+
         // Send email alert about sync error
         await sendWebhookAlert({
           type: 'renewal_failed',
           message: 'Drive webhook triggered but photo sync threw an error',
           details: { error: String(error) },
         });
-        
-        return NextResponse.json({ 
-          received: true, 
-          synced: false,
-          error: `Sync failed: ${error}` 
-        }, { status: 200 }); // Still return 200 to prevent Google retries
+
+        return NextResponse.json(
+          {
+            received: true,
+            synced: false,
+            error: `Sync failed: ${error}`,
+          },
+          { status: 200 }
+        ); // Still return 200 to prevent Google retries
       }
     }
-    
+
     return NextResponse.json({ received: true });
   } catch (error) {
     console.error('Error processing drive webhook:', error);

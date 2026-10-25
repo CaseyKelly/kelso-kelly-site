@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
 
     // Detect and cleanup duplicates FIRST
     const channels = await getWebhookChannels();
-    const channelsByResource = new Map<string, typeof channels[0]>();
+    const channelsByResource = new Map<string, (typeof channels)[0]>();
     const duplicatesToDelete: string[] = [];
 
     for (const channel of channels) {
@@ -48,12 +48,12 @@ export async function GET(request: NextRequest) {
     // Clean up duplicates
     if (duplicatesToDelete.length > 0) {
       console.log(`Found ${duplicatesToDelete.length} duplicate webhooks, cleaning up...`);
-      
+
       for (const channelId of duplicatesToDelete) {
         try {
           // Find the full channel record to get resource_type and resource_id
-          const duplicateChannel = channels.find(c => c.channel_id === channelId);
-          
+          const duplicateChannel = channels.find((c) => c.channel_id === channelId);
+
           if (!duplicateChannel) {
             console.warn(`Channel ${channelId} not found in list, skipping stop`);
           } else {
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
               console.warn(`Could not stop channel ${channelId}:`, stopError);
             }
           }
-          
+
           // Delete from database even if stop failed
           await deleteWebhookChannel(channelId);
           console.log(`Deleted duplicate channel from DB: ${channelId}`);
@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
           console.error(`Failed to delete duplicate ${channelId}:`, error);
         }
       }
-      
+
       // Send alert about duplicates
       await sendWebhookAlert({
         type: 'duplicate_detected',
@@ -109,9 +109,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error in webhook renewal cron:', error);
-    return NextResponse.json(
-      { success: false, error: `${error}` },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: `${error}` }, { status: 500 });
   }
 }

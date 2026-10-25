@@ -54,13 +54,16 @@ describe('POST /api/webhook-drive-videos', () => {
     expect(mockedTrigger).not.toHaveBeenCalled();
   });
 
-  it.each(['change', 'update', 'exists'])('dispatches the YouTube sync workflow on a "%s" notification', async (resourceState) => {
-    mockedTrigger.mockResolvedValue(undefined);
-    const response = await POST(makeRequest({ 'x-goog-resource-state': resourceState }));
-    const json = await response.json();
-    expect(mockedTrigger).toHaveBeenCalled();
-    expect(json).toEqual({ received: true, dispatched: true });
-  });
+  it.each(['change', 'update', 'exists'])(
+    'dispatches the YouTube sync workflow on a "%s" notification',
+    async (resourceState) => {
+      mockedTrigger.mockResolvedValue(undefined);
+      const response = await POST(makeRequest({ 'x-goog-resource-state': resourceState }));
+      const json = await response.json();
+      expect(mockedTrigger).toHaveBeenCalled();
+      expect(json).toEqual({ received: true, dispatched: true });
+    }
+  );
 
   it('alerts and still returns 200 when dispatching the workflow fails', async () => {
     mockedTrigger.mockRejectedValue(new Error('GITHUB_ACTIONS_TOKEN not configured'));

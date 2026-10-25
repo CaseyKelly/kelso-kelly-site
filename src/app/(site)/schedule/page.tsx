@@ -1,19 +1,19 @@
-import { Metadata } from "next";
-import { Calendar, MapPin, ExternalLink } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
-import { SectionHeader } from "@/components/ui/SectionHeader";
-import { JsonLd } from "@/components/JsonLd";
-import { getUpcomingEvents, getPastEvents, DbEvent } from "@/lib/db";
-import { formatDate } from "@/lib/utils";
+import { Metadata } from 'next';
+import { Calendar, MapPin, ExternalLink } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { SectionHeader } from '@/components/ui/SectionHeader';
+import { JsonLd } from '@/components/JsonLd';
+import { getUpcomingEvents, getPastEvents, DbEvent } from '@/lib/db';
+import { formatDate } from '@/lib/utils';
 
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-  title: "Upcoming Shows",
+  title: 'Upcoming Shows',
   description:
-    "Catch Kelso Kelly live at venues across Fort Collins, Loveland, Greeley, and Northern Colorado. View the full show schedule and get tickets.",
-  alternates: { canonical: "/schedule" },
+    'Catch Kelso Kelly live at venues across Fort Collins, Loveland, Greeley, and Northern Colorado. View the full show schedule and get tickets.',
+  alternates: { canonical: '/schedule' },
 };
 
 function parseEventDate(dateStr: string): { month: string; day: string } {
@@ -27,16 +27,12 @@ function parseEventDate(dateStr: string): { month: string; day: string } {
 function EventCard({ event, isPast = false }: { event: DbEvent; isPast?: boolean }) {
   const { month, day } = parseEventDate(event.date);
   return (
-    <Card hover={!isPast} className={isPast ? "opacity-50" : ""}>
+    <Card hover={!isPast} className={isPast ? 'opacity-50' : ''}>
       <CardContent className="p-0 flex overflow-hidden">
         {/* Date block */}
         <div className="bg-amber-500/10 border-r border-amber-500/15 px-5 py-5 flex flex-col items-center justify-center min-w-[72px] shrink-0">
-          <span className="text-[10px] font-semibold tracking-widest uppercase text-amber-500 mb-1">
-            {month}
-          </span>
-          <span className="font-display text-4xl font-black text-white leading-none">
-            {day}
-          </span>
+          <span className="text-[10px] font-semibold tracking-widest uppercase text-amber-500 mb-1">{month}</span>
+          <span className="font-display text-4xl font-black text-white leading-none">{day}</span>
         </div>
 
         {/* Content */}
@@ -66,9 +62,7 @@ function EventCard({ event, isPast = false }: { event: DbEvent; isPast?: boolean
                 {event.time}
               </span>
             )}
-            {event.description && (
-              <p className="text-zinc-500 text-sm">{event.description}</p>
-            )}
+            {event.description && <p className="text-zinc-500 text-sm">{event.description}</p>}
           </div>
 
           {event.ticket_url && !isPast && (
@@ -92,61 +86,56 @@ export default async function SchedulePage() {
   let pastEvents: DbEvent[] = [];
 
   try {
-    const [upcoming, past] = await Promise.all([
-      getUpcomingEvents(),
-      getPastEvents(5)
-    ]);
+    const [upcoming, past] = await Promise.all([getUpcomingEvents(), getPastEvents(5)]);
     upcomingEvents = upcoming;
     pastEvents = past;
   } catch (error) {
     console.warn('Unable to fetch events:', error);
   }
 
-  const eventSchema = upcomingEvents.length > 0
-    ? {
-        "@context": "https://schema.org",
-        "@type": "ItemList",
-        itemListElement: upcomingEvents.map((event: DbEvent, index: number) => ({
-          "@type": "ListItem",
-          position: index + 1,
-          item: {
-            "@type": "MusicEvent",
-            name: event.title,
-            startDate: event.date,
-            performer: {
-              "@type": "MusicGroup",
-              name: "Kelso Kelly",
-              url: "https://www.kelsokellymusic.com",
-            },
-            location: event.venue
-              ? {
-                  "@type": "Place",
-                  name: event.venue,
-                  address: event.address || "Northern Colorado",
-                }
-              : {
-                  "@type": "Place",
-                  address: {
-                    "@type": "PostalAddress",
-                    addressRegion: "CO",
-                    addressCountry: "US",
+  const eventSchema =
+    upcomingEvents.length > 0
+      ? {
+          '@context': 'https://schema.org',
+          '@type': 'ItemList',
+          itemListElement: upcomingEvents.map((event: DbEvent, index: number) => ({
+            '@type': 'ListItem',
+            position: index + 1,
+            item: {
+              '@type': 'MusicEvent',
+              name: event.title,
+              startDate: event.date,
+              performer: {
+                '@type': 'MusicGroup',
+                name: 'Kelso Kelly',
+                url: 'https://www.kelsokellymusic.com',
+              },
+              location: event.venue
+                ? {
+                    '@type': 'Place',
+                    name: event.venue,
+                    address: event.address || 'Northern Colorado',
+                  }
+                : {
+                    '@type': 'Place',
+                    address: {
+                      '@type': 'PostalAddress',
+                      addressRegion: 'CO',
+                      addressCountry: 'US',
+                    },
                   },
-                },
-            url: event.ticket_url || "https://www.kelsokellymusic.com/schedule",
-            ...(event.description && { description: event.description }),
-          },
-        })),
-      }
-    : null;
+              url: event.ticket_url || 'https://www.kelsokellymusic.com/schedule',
+              ...(event.description && { description: event.description }),
+            },
+          })),
+        }
+      : null;
 
   return (
     <div className="min-h-screen py-24">
       {eventSchema && <JsonLd data={eventSchema} />}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <SectionHeader
-          title="Upcoming Shows"
-          subtitle="Catch Kelso live at venues across Northern Colorado"
-        />
+        <SectionHeader title="Upcoming Shows" subtitle="Catch Kelso live at venues across Northern Colorado" />
 
         {upcomingEvents.length > 0 ? (
           <div className="space-y-4">
@@ -157,12 +146,8 @@ export default async function SchedulePage() {
         ) : (
           <div className="text-center py-16">
             <Calendar className="h-16 w-16 text-zinc-700 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-white mb-2">
-              No Upcoming Shows
-            </h3>
-            <p className="text-zinc-400">
-              Check back soon for new show announcements!
-            </p>
+            <h3 className="text-xl font-semibold text-white mb-2">No Upcoming Shows</h3>
+            <p className="text-zinc-400">Check back soon for new show announcements!</p>
           </div>
         )}
 

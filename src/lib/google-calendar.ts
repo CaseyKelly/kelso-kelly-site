@@ -34,7 +34,7 @@ export interface CalendarEvent {
  */
 export function parseLocation(location?: string | null): { venue?: string; address?: string } {
   if (!location) return {};
-  
+
   // If location contains a comma, assume first part is venue name, rest is address
   const parts = location.split(',');
   if (parts.length > 1) {
@@ -43,7 +43,7 @@ export function parseLocation(location?: string | null): { venue?: string; addre
       address: location, // Keep full address
     };
   }
-  
+
   // Otherwise, treat entire string as venue
   return {
     venue: location.trim(),
@@ -56,19 +56,16 @@ export function parseLocation(location?: string | null): { venue?: string; addre
  */
 export function parseDescription(description?: string | null): { description?: string; ticketUrl?: string } {
   if (!description) return {};
-  
+
   // Look for ticket URL patterns
   const urlRegex = /(https?:\/\/[^\s]+)/g;
   const urls = description.match(urlRegex);
-  
+
   // If we find a URL that looks like a ticket link, extract it
-  const ticketUrl = urls?.find(url => 
-    url.includes('ticket') || 
-    url.includes('event') || 
-    url.includes('eventbrite') ||
-    url.includes('seetickets')
+  const ticketUrl = urls?.find(
+    (url) => url.includes('ticket') || url.includes('event') || url.includes('eventbrite') || url.includes('seetickets')
   );
-  
+
   return {
     description,
     ticketUrl,
@@ -81,14 +78,14 @@ export function parseDescription(description?: string | null): { description?: s
  */
 export function formatTime(dateTime?: string | null, date?: string | null): string {
   if (!dateTime && !date) return 'TBD';
-  
+
   // If it's an all-day event, return generic time
   if (date && !dateTime) return 'All Day';
-  
+
   // Google returns datetime in GMT/UTC, we need to convert to Mountain Time
   // Mountain Time is UTC-7 (MDT) or UTC-6 (MST)
   const dt = new Date(dateTime!);
-  
+
   // Convert to Mountain Time using toLocaleString
   const mountainTime = dt.toLocaleString('en-US', {
     timeZone: 'America/Denver',
@@ -96,7 +93,7 @@ export function formatTime(dateTime?: string | null, date?: string | null): stri
     minute: '2-digit',
     hour12: true,
   });
-  
+
   return mountainTime;
 }
 
@@ -114,16 +111,13 @@ export function formatDate(dateTime?: string | null, date?: string | null): stri
  * @param maxResults Maximum number of events to fetch (default: 50)
  * @param timeMin Minimum time to fetch events from (default: now)
  */
-export async function fetchCalendarEvents(
-  maxResults = 50,
-  timeMin?: Date
-): Promise<CalendarEvent[]> {
+export async function fetchCalendarEvents(maxResults = 50, timeMin?: Date): Promise<CalendarEvent[]> {
   if (!process.env.GOOGLE_CALENDAR_ID) {
     throw new Error('GOOGLE_CALENDAR_ID not configured');
   }
 
   const calendar = getCalendarClient();
-  
+
   try {
     const response = await calendar.events.list({
       calendarId: process.env.GOOGLE_CALENDAR_ID,
@@ -134,11 +128,11 @@ export async function fetchCalendarEvents(
     });
 
     const events = response.data.items || [];
-    
-    return events.map(event => {
+
+    return events.map((event) => {
       const location = parseLocation(event.location);
       const { description, ticketUrl } = parseDescription(event.description);
-      
+
       return {
         id: event.id!,
         title: event.summary || 'Untitled Event',
@@ -169,7 +163,7 @@ export async function fetchAllCalendarEvents(maxResults = 100): Promise<Calendar
   const allEvents: CalendarEvent[] = [];
   let pageToken: string | undefined;
   let pageCount = 0;
-  
+
   try {
     do {
       pageCount++;
@@ -182,11 +176,11 @@ export async function fetchAllCalendarEvents(maxResults = 100): Promise<Calendar
       });
 
       const events = response.data.items || [];
-      
-      const pageEvents = events.map(event => {
+
+      const pageEvents = events.map((event) => {
         const location = parseLocation(event.location);
         const { description, ticketUrl } = parseDescription(event.description);
-        
+
         return {
           id: event.id!,
           title: event.summary || 'Untitled Event',
@@ -198,17 +192,17 @@ export async function fetchAllCalendarEvents(maxResults = 100): Promise<Calendar
           ticketUrl,
         };
       });
-      
+
       allEvents.push(...pageEvents);
-      
+
       // Get next page token, will be undefined if this is the last page
       pageToken = response.data.nextPageToken ?? undefined;
     } while (pageToken);
-    
+
     if (pageCount > 1) {
       console.log(`Fetched calendar events across ${pageCount} pages (total: ${allEvents.length} events)`);
     }
-    
+
     return allEvents;
   } catch (error) {
     console.error('Error fetching all calendar events:', error);
@@ -226,11 +220,11 @@ export async function watchCalendar(webhookUrl: string, channelId: string) {
   }
 
   const calendar = getCalendarClient();
-  
+
   try {
     // Webhook expires after 7 days, will need to be renewed
-    const expiration = Date.now() + (7 * 24 * 60 * 60 * 1000);
-    
+    const expiration = Date.now() + 7 * 24 * 60 * 60 * 1000;
+
     const response = await calendar.events.watch({
       calendarId: process.env.GOOGLE_CALENDAR_ID,
       requestBody: {
@@ -257,7 +251,7 @@ export async function watchCalendar(webhookUrl: string, channelId: string) {
  */
 export async function stopWatchingCalendar(channelId: string, resourceId: string) {
   const calendar = getCalendarClient();
-  
+
   try {
     await calendar.channels.stop({
       requestBody: {
@@ -267,13 +261,14 @@ export async function stopWatchingCalendar(channelId: string, resourceId: string
     });
   } catch (error) {
     // If the channel is already gone (404), that's fine - just log and continue
-    const status = (error as { status?: number; code?: number } | null)?.status
-      ?? (error as { status?: number; code?: number } | null)?.code;
+    const status =
+      (error as { status?: number; code?: number } | null)?.status ??
+      (error as { status?: number; code?: number } | null)?.code;
     if (status === 404) {
       console.log(`Calendar channel '${channelId}' already expired/deleted, continuing...`);
       return;
     }
-    
+
     console.error('Error stopping calendar watch:', error);
     throw new Error(`Failed to stop calendar watch: ${error}`);
   }

@@ -59,7 +59,13 @@ describe('POST /api/webhooks/cleanup', () => {
 
   it('reinitializes after cleanup when reinitialize:true is passed', async () => {
     process.env.WEBHOOK_SETUP_SECRET = 'super-secret';
-    mockedInit.mockResolvedValue({ calendar: {}, drivePhotos: {}, driveVideos: null, cleanup: { stopped: 0, failed: 0, deleted: 0 }, errors: [] });
+    mockedInit.mockResolvedValue({
+      calendar: {},
+      drivePhotos: {},
+      driveVideos: null,
+      cleanup: { stopped: 0, failed: 0, deleted: 0 },
+      errors: [],
+    });
     const response = await POST(makeRequest({ reinitialize: true }, { authorization: 'Bearer super-secret' }));
     const json = await response.json();
     expect(mockedInit).toHaveBeenCalledWith('https://kelso-kelly-site.vercel.app');
@@ -68,7 +74,13 @@ describe('POST /api/webhooks/cleanup', () => {
 
   it('reports partial failure when reinitialize has errors', async () => {
     process.env.WEBHOOK_SETUP_SECRET = 'super-secret';
-    mockedInit.mockResolvedValue({ calendar: null, drivePhotos: {}, driveVideos: null, cleanup: { stopped: 0, failed: 0, deleted: 0 }, errors: ['Calendar: boom'] });
+    mockedInit.mockResolvedValue({
+      calendar: null,
+      drivePhotos: {},
+      driveVideos: null,
+      cleanup: { stopped: 0, failed: 0, deleted: 0 },
+      errors: ['Calendar: boom'],
+    });
     const response = await POST(makeRequest({ reinitialize: true }, { authorization: 'Bearer super-secret' }));
     const json = await response.json();
     expect(json.success).toBe(false);

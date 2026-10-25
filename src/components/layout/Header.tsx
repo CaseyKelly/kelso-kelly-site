@@ -1,18 +1,18 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Menu, X } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useState } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { Menu, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const navigation = [
-  { name: "Home", href: "/" },
-  { name: "Photos & Videos", href: "/media" },
-  { name: "Schedule", href: "/schedule" },
-  { name: "Bio", href: "/bio" },
-  { name: "Song List", href: "/songs" },
-  { name: "Contact", href: "/contact" },
+  { name: 'Home', href: '/' },
+  { name: 'Photos & Videos', href: '/media' },
+  { name: 'Schedule', href: '/schedule' },
+  { name: 'Bio', href: '/bio' },
+  { name: 'Song List', href: '/songs' },
+  { name: 'Contact', href: '/contact' },
 ];
 
 export function Header() {
@@ -26,7 +26,7 @@ export function Header() {
           <div className="flex items-center">
             <Link href="/" className="group">
               <span className="font-display text-xl font-bold text-white group-hover:text-amber-400 transition-colors tracking-tight">
-                <em className="not-italic italic text-amber-400">Kelso</em>{" "}Kelly
+                <em className="not-italic italic text-amber-400">Kelso</em> Kelly
               </span>
             </Link>
           </div>
@@ -37,10 +37,10 @@ export function Header() {
                 key={item.name}
                 href={item.href}
                 className={cn(
-                  "px-4 py-2 text-sm font-medium tracking-wide transition-colors",
+                  'px-4 py-2 text-sm font-medium tracking-wide transition-colors',
                   pathname === item.href
-                    ? "text-amber-400 border-b-2 border-amber-500"
-                    : "text-zinc-400 hover:text-white"
+                    ? 'text-amber-400 border-b-2 border-amber-500'
+                    : 'text-zinc-400 hover:text-white'
                 )}
               >
                 {item.name}
@@ -54,11 +54,7 @@ export function Header() {
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 text-zinc-400 hover:text-white transition-colors"
             >
-              {mobileMenuOpen ? (
-                <X className="h-6 w-6" />
-              ) : (
-                <Menu className="h-6 w-6" />
-              )}
+              {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
           </div>
         </div>
@@ -72,10 +68,10 @@ export function Header() {
                   href={item.href}
                   onClick={() => setMobileMenuOpen(false)}
                   className={cn(
-                    "px-4 py-3 text-base font-medium transition-colors",
+                    'px-4 py-3 text-base font-medium transition-colors',
                     pathname === item.href
-                      ? "text-amber-400 border-l-2 border-amber-500 pl-3"
-                      : "text-zinc-400 hover:text-white hover:bg-[#1e1710] rounded-lg"
+                      ? 'text-amber-400 border-l-2 border-amber-500 pl-3'
+                      : 'text-zinc-400 hover:text-white hover:bg-[#1e1710] rounded-lg'
                   )}
                 >
                   {item.name}

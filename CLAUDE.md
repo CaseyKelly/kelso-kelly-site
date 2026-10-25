@@ -5,6 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 A Next.js 16 website for musician Kelso Kelly featuring:
+
 - Event calendar synced from Google Calendar
 - Photo gallery synced from Google Drive
 - Video gallery synced from Google Sheets
@@ -18,6 +19,7 @@ A Next.js 16 website for musician Kelso Kelly featuring:
 ## Commands
 
 ### Development
+
 ```bash
 npm run dev          # Start dev server on http://localhost:3000
 npm run build        # Production build
@@ -27,6 +29,7 @@ npx tsc --noEmit     # Type check without emitting files
 ```
 
 ### Testing
+
 This project currently has no test suite. If adding tests, place them adjacent to source files using `ComponentName.test.tsx`.
 
 ## Architecture Overview
@@ -56,6 +59,7 @@ Each sync function returns a `SyncResult` with success status, message, and deta
 All database operations use the Neon serverless driver with SQL template tags. Key patterns:
 
 **Upsert with change detection**: The `upsert*` functions (e.g., `upsertEvent`, `upsertPhoto`) use `ON CONFLICT ... DO UPDATE` with a `WHERE` clause that only updates if data has changed:
+
 ```sql
 ON CONFLICT (google_event_id)
 DO UPDATE SET ...
@@ -64,6 +68,7 @@ RETURNING *, (xmax = 0) AS inserted
 ```
 
 This pattern:
+
 - Returns `'created'` if row was inserted
 - Returns `'updated'` if row was modified
 - Returns `'unchanged'` if data hasn't changed (skips the UPDATE, preventing unnecessary `updated_at` changes)
@@ -97,6 +102,7 @@ The `(site)` route group in `src/app/(site)/` contains public pages and shares a
 ### Image Optimization Flow
 
 Photos from Google Drive go through a multi-step process:
+
 1. Download via `downloadFile()` from `src/lib/google-drive.ts`
 2. Optimize using Sharp in `src/lib/image-optimizer.ts` (resize to max 1920px, convert to WebP, 85% quality)
 3. Upload to Vercel Blob Storage with public access
@@ -107,6 +113,7 @@ Existing photos skip steps 1-3 during sync to avoid expensive re-processing.
 ### Environment Variables
 
 Required for local development (`.env.local`):
+
 ```
 DATABASE_URL                      # Neon PostgreSQL connection string
 GOOGLE_SERVICE_ACCOUNT_EMAIL      # Service account email
@@ -124,23 +131,28 @@ NEXT_PUBLIC_SENTRY_DSN            # Same Sentry DSN, exposed to the browser bund
 ```
 
 Required as a Vercel env var only (build-time, not needed for `npm run dev`):
+
 ```
 SENTRY_AUTH_TOKEN                 # Sentry auth token for uploading source maps during build — create at sentry.io/settings/account/api/auth-tokens/
 ```
 
 Required as a GitHub Actions secret too (in addition to the Vercel env var above) for the Drive → YouTube upload pipeline — see `scripts/sync-drive-videos-to-youtube.js`:
+
 ```
 GOOGLE_DRIVE_VIDEOS_FOLDER_ID      # Same value as the Vercel env var — Drive folder watched for new raw video files
 YOUTUBE_CLIENT_ID                 # OAuth client (Desktop app type) for YouTube uploads
 YOUTUBE_CLIENT_SECRET             # OAuth client secret
 YOUTUBE_REFRESH_TOKEN             # One-time-obtained refresh token, see scripts/get-youtube-refresh-token.js
 ```
+
 The YouTube Data API doesn't accept service-account auth for uploads, so this pipeline runs as a scheduled GitHub Actions workflow (`.github/workflows/sync-drive-videos-to-youtube.yml`), not a Vercel function — uploads can be slow/large enough to risk a function timeout.
 
 Required as a Vercel env var (in addition to the above) so the videos Drive webhook can trigger that workflow instantly instead of waiting for its 6-hour cron:
+
 ```
 GITHUB_ACTIONS_TOKEN                # Fine-grained GitHub PAT, Actions:read+write on this repo only
 ```
+
 `/api/webhook-drive-videos` receives the Drive push notification and calls GitHub's `workflow_dispatch` API — it does not perform the upload itself. `webhook_channels.folder_id` tracks which Drive folder each channel watches so `/api/cron/renew-drive-webhooks` can renew multiple Drive folders (photos + videos) generically. That cron also self-heals: any configured folder (`GOOGLE_DRIVE_PHOTOS_FOLDER_ID` / `GOOGLE_DRIVE_VIDEOS_FOLDER_ID`) with no channel row gets a new webhook created on the next run, so a lost or never-created channel recovers within 12 hours.
 
 **Important**: adding `GOOGLE_DRIVE_VIDEOS_FOLDER_ID`/`GITHUB_ACTIONS_TOKEN` to Vercel is not enough on its own — `POST /api/webhooks/setup` (with `WEBHOOK_SETUP_SECRET`) must also be called once to actually create the Google Drive "watch" subscription for the videos folder. Until that call is made, Google has no channel to notify and new videos will silently fall back to the 6-hour cron instead of uploading instantly.
@@ -148,6 +160,7 @@ GITHUB_ACTIONS_TOKEN                # Fine-grained GitHub PAT, Actions:read+writ
 ### Vercel Cron Jobs
 
 Configured in `vercel.json`:
+
 - **Daily (00:00)**: Renew webhook subscriptions (`/api/cron/renew-webhooks`)
 - **Every 5 minutes**: Sync calendar events (`/api/sync-calendar`)
 - **Every 10 minutes**: Sync photos (`/api/sync-photos`)
@@ -158,28 +171,34 @@ Webhooks provide real-time updates; cron jobs serve as a fallback mechanism.
 ## Code Style
 
 ### Path Aliases
+
 Use `@/*` for absolute imports: `@/components`, `@/lib`, `@/types` (configured in `tsconfig.json`).
 
 ### TypeScript Rules
+
 - Explicit return types for exported functions
 - Interface over type for object shapes
 - Avoid `any`, prefer `unknown` or proper types
 - Use optional chaining (`?.`) and nullish coalescing (`??`)
 
 ### React Components
+
 - **Server Components by default** (Next.js 16 App Router)
 - Only add `"use client"` when using hooks, event handlers, or browser APIs
 - Fetch data directly in Server Components using async/await
 
 ### Database Types
+
 Prefix database types with `Db`: `DbEvent`, `DbPhoto`, `DbVideo` (defined in `src/lib/db.ts`)
 
 ### Error Handling
+
 - **API Routes**: Return JSON with appropriate status codes
 - **Server Components**: Use graceful degradation (empty arrays, fallback UI)
 - **Library functions**: Return `SyncResult` objects with `{ success, message, details? }`
 
 ### Import Order
+
 1. External packages (React, Next.js, third-party)
 2. Internal absolute imports using `@/` alias
 3. Relative imports (if needed)
@@ -189,6 +208,7 @@ Prefix database types with `Db`: `DbEvent`, `DbPhoto`, `DbVideo` (defined in `sr
 **CRITICAL**: Never commit or merge directly to `main` branch.
 
 ### Required workflow:
+
 1. Create feature branch: `git checkout -b feature/descriptive-name`
 2. Make changes and commit to feature branch
 3. Push branch: `git push -u origin feature/descriptive-name`

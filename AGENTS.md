@@ -5,8 +5,9 @@ This document provides coding guidelines and project information for AI agents w
 ## Project Overview
 
 A Next.js 16 website for musician Kelso Kelly, featuring:
+
 - Event calendar synced from Google Calendar
-- Photo gallery synced from Google Drive  
+- Photo gallery synced from Google Drive
 - Video gallery synced from Google Sheets
 - Automated webhooks for real-time content updates
 - PostgreSQL database (Neon) for data storage
@@ -21,6 +22,7 @@ A Next.js 16 website for musician Kelso Kelly, featuring:
 ### Required Workflow for ALL Changes:
 
 1. **Always work on a feature branch:**
+
    ```bash
    git checkout -b feature/descriptive-name
    # or: git checkout -b fix/bug-description
@@ -46,6 +48,7 @@ A Next.js 16 website for musician Kelso Kelly, featuring:
 ## Build, Lint, and Test Commands
 
 ### Development
+
 ```bash
 npm run dev          # Start dev server on http://localhost:3000
 npm run build        # Production build
@@ -54,13 +57,16 @@ npm run lint         # Run ESLint on all files
 ```
 
 ### Testing
+
 **Note:** This project currently has no test suite. When adding tests:
+
 - Use Jest or Vitest for unit/integration tests
 - Use Playwright for E2E tests
 - Place tests adjacent to source files: `ComponentName.test.tsx`
 - Run single test: `npm test -- path/to/file.test.ts`
 
 ### Type Checking
+
 ```bash
 npx tsc --noEmit    # Type check all files without emitting
 ```
@@ -68,23 +74,25 @@ npx tsc --noEmit    # Type check all files without emitting
 ## Code Style Guidelines
 
 ### Import Order
+
 ```typescript
 // 1. External packages (React, Next.js, third-party)
-import { useState } from "react";
-import Link from "next/link";
-import { Calendar } from "lucide-react";
+import { useState } from 'react';
+import Link from 'next/link';
+import { Calendar } from 'lucide-react';
 
 // 2. Internal absolute imports using @ alias
-import { Button } from "@/components/ui/Button";
-import { getEvents } from "@/lib/db";
-import { formatDate } from "@/lib/utils";
-import type { Event } from "@/types";
+import { Button } from '@/components/ui/Button';
+import { getEvents } from '@/lib/db';
+import { formatDate } from '@/lib/utils';
+import type { Event } from '@/types';
 
 // 3. Relative imports (if needed)
-import { localHelper } from "./helpers";
+import { localHelper } from './helpers';
 ```
 
 ### Path Aliases
+
 - Use `@/*` for absolute imports: `@/components`, `@/lib`, `@/types`
 - Defined in `tsconfig.json` paths configuration
 
@@ -93,32 +101,38 @@ import { localHelper } from "./helpers";
 **Strict mode is enabled.** Follow these rules:
 
 1. **Explicit return types for exported functions:**
+
    ```typescript
    export async function getEvents(): Promise<DbEvent[]> { ... }
    export function formatDate(date: string): string { ... }
    ```
 
 2. **Interface over type for object shapes:**
+
    ```typescript
    // Preferred
-   export interface Event { id: string; title: string; }
-   
+   export interface Event {
+     id: string;
+     title: string;
+   }
+
    // Use type for unions/intersections
-   export type Status = "upcoming" | "cancelled" | "sold-out";
+   export type Status = 'upcoming' | 'cancelled' | 'sold-out';
    ```
 
 3. **Avoid `any`, use `unknown` or proper types:**
+
    ```typescript
    // Bad
    let data: any = await fetch();
-   
+
    // Good
    const data: DbEvent[] = await getEvents();
    ```
 
 4. **Use optional chaining and nullish coalescing:**
    ```typescript
-   const venue = event.venue ?? "TBA";
+   const venue = event.venue ?? 'TBA';
    const address = event.address ?? null;
    ```
 
@@ -129,15 +143,16 @@ import { localHelper } from "./helpers";
    - Fetch data directly in Server Components
 
 2. **Component structure:**
+
    ```typescript
    import type { ComponentProps } from "react";
-   
+
    interface ButtonProps {
      children: React.ReactNode;
      variant?: "primary" | "secondary";
      className?: string;
    }
-   
+
    export function Button({ children, variant = "primary", className }: ButtonProps) {
      return <button className={cn(baseStyles, className)}>{children}</button>;
    }
@@ -167,6 +182,7 @@ import { localHelper } from "./helpers";
 ### Error Handling
 
 1. **API Routes - return JSON with status:**
+
    ```typescript
    export async function POST(request: NextRequest) {
      try {
@@ -174,15 +190,13 @@ import { localHelper } from "./helpers";
        return NextResponse.json(result, { status: 200 });
      } catch (error) {
        console.error('Error:', error);
-       return NextResponse.json(
-         { success: false, message: `${error}` },
-         { status: 500 }
-       );
+       return NextResponse.json({ success: false, message: `${error}` }, { status: 500 });
      }
    }
    ```
 
 2. **Server Components - graceful degradation:**
+
    ```typescript
    export default async function Page() {
      let events: DbEvent[] = [];
@@ -203,11 +217,11 @@ import { localHelper } from "./helpers";
      message: string;
      details?: any;
    }
-   
+
    export async function syncData(): Promise<SyncResult> {
      try {
        // ... sync logic
-       return { success: true, message: "Synced successfully" };
+       return { success: true, message: 'Synced successfully' };
      } catch (error) {
        return { success: false, message: `${error}` };
      }
@@ -217,11 +231,13 @@ import { localHelper } from "./helpers";
 ### Database Patterns
 
 1. **Use parameterized queries** (sql template tag from `@neondatabase/serverless`):
+
    ```typescript
    const events = await sql`SELECT * FROM events WHERE date >= ${date}`;
    ```
 
 2. **Upsert pattern for sync operations:**
+
    ```typescript
    const result = await sql`
      INSERT INTO table (id, data) VALUES (${id}, ${data})
@@ -257,6 +273,7 @@ db/
 ## Environment Variables
 
 Required for local development (in `.env.local`):
+
 - `DATABASE_URL` - Neon PostgreSQL connection string
 - `GOOGLE_CLIENT_EMAIL` - Service account email
 - `GOOGLE_PRIVATE_KEY` - Service account private key
@@ -275,6 +292,7 @@ Required for local development (in `.env.local`):
 ## Common Patterns
 
 ### Route Handler with Auth
+
 ```typescript
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
@@ -286,6 +304,7 @@ export async function GET(request: NextRequest) {
 ```
 
 ### ISR Configuration
+
 ```typescript
 export const revalidate = 60; // Revalidate every 60 seconds
 export const dynamic = 'force-dynamic'; // For API routes
@@ -295,9 +314,10 @@ export const maxDuration = 60; // Max execution time
 ## Cron Jobs (Vercel)
 
 Configured in `vercel.json`:
+
 - Renew webhooks: Daily at midnight
 - Sync calendar: Every 5 minutes
-- Sync photos: Every 10 minutes  
+- Sync photos: Every 10 minutes
 - Sync videos: Every hour
 
 ## Resources

@@ -17,12 +17,7 @@ export default defineConfig({
     // tests opt into jsdom individually via a `// @vitest-environment jsdom`
     // docblock at the top of the file.
     environment: 'node',
-    exclude: [
-      '**/node_modules/**',
-      '**/.next/**',
-      '**/e2e/**',
-      '**/*.integration.test.ts',
-    ],
+    exclude: ['**/node_modules/**', '**/.next/**', '**/e2e/**', '**/*.integration.test.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],

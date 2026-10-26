@@ -153,9 +153,10 @@ KelsoKellyMusic/
 ### 4.3 Add Sample Data (optional)
 
 Example:
-| Title | YouTube URL | Category | Description | Order |
-|---|---|---|---|---|
-| Live at Oskar Blues | https://youtube.com/watch?v=abc123 | live | Full performance | 1 |
+
+| Title               | YouTube URL                        | Category | Description      | Order |
+| ------------------- | ---------------------------------- | -------- | ---------------- | ----- |
+| Live at Oskar Blues | https://youtube.com/watch?v=abc123 | live     | Full performance | 1     |
 
 **Valid categories:** `live`, `music-video`, `interview`
 

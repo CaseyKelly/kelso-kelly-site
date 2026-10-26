@@ -13,10 +13,7 @@ import type { DbSyncLog } from './db';
  * @param minIntervalMs - Minimum milliseconds between syncs
  * @returns true if sync should proceed, false if throttled
  */
-export async function shouldSync(
-  syncType: DbSyncLog['sync_type'],
-  minIntervalMs: number
-): Promise<boolean> {
+export async function shouldSync(syncType: DbSyncLog['sync_type'], minIntervalMs: number): Promise<boolean> {
   const lastSync = await getLastSuccessfulSync(syncType);
 
   if (!lastSync) {
@@ -29,9 +26,7 @@ export async function shouldSync(
   const timeSinceLastSync = now - lastSyncTime;
 
   if (timeSinceLastSync < minIntervalMs) {
-    console.log(
-      `Throttling ${syncType} sync - last sync ${Math.round(timeSinceLastSync / 1000)}s ago`
-    );
+    console.log(`Throttling ${syncType} sync - last sync ${Math.round(timeSinceLastSync / 1000)}s ago`);
     return false;
   }
 

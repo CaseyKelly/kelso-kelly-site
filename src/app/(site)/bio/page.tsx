@@ -1,15 +1,15 @@
-import { Metadata } from "next";
-import Image from "next/image";
-import { Music2, CheckCircle } from "lucide-react";
-import { SectionHeader } from "@/components/ui/SectionHeader";
-import { Card, CardContent } from "@/components/ui/Card";
-import { bio } from "@/data/bio";
+import { Metadata } from 'next';
+import Image from 'next/image';
+import { Music2, CheckCircle } from 'lucide-react';
+import { SectionHeader } from '@/components/ui/SectionHeader';
+import { Card, CardContent } from '@/components/ui/Card';
+import { bio } from '@/data/bio';
 
 export const metadata: Metadata = {
-  title: "About Kelso Kelly",
+  title: 'About Kelso Kelly',
   description:
-    "40+ years of live music in Colorado. Kelso Kelly is a Fort Collins-based guitarist and vocalist performing pop, R&B, and country — solo and as the Cattywampus Duo.",
-  alternates: { canonical: "/bio" },
+    '40+ years of live music in Colorado. Kelso Kelly is a Fort Collins-based guitarist and vocalist performing pop, R&B, and country — solo and as the Cattywampus Duo.',
+  alternates: { canonical: '/bio' },
 };
 
 export default function BioPage() {
@@ -18,10 +18,7 @@ export default function BioPage() {
   return (
     <div className="min-h-screen py-24">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <SectionHeader
-          title="About Kelso"
-          subtitle="A lifetime of making music and creating memories"
-        />
+        <SectionHeader title="About Kelso" subtitle="A lifetime of making music and creating memories" />
 
         <div className="grid gap-12">
           {/* Bio content with floating photo */}
@@ -37,13 +34,11 @@ export default function BioPage() {
                   priority
                 />
               </div>
-              <p className="text-xl text-zinc-300 leading-relaxed m-0">
-                {bio.intro}
-              </p>
+              <p className="text-xl text-zinc-300 leading-relaxed m-0">{bio.intro}</p>
             </div>
 
             <div className="space-y-6 text-zinc-400">
-              {fullBioText.split("\n\n").map((paragraph: string, index: number) => (
+              {fullBioText.split('\n\n').map((paragraph: string, index: number) => (
                 <p key={index} className="leading-relaxed">
                   {paragraph}
                 </p>
@@ -71,22 +66,16 @@ export default function BioPage() {
 
             <Card>
               <CardContent className="p-8">
-                <h3 className="font-display text-xl font-semibold text-white mb-6">
-                  Musical Journey
-                </h3>
+                <h3 className="font-display text-xl font-semibold text-white mb-6">Musical Journey</h3>
                 <div className="space-y-6">
                   {bio.timeline.map((item: { year: string; event: string }, index: number) => (
                     <div key={index} className="flex gap-4">
                       <div className="flex flex-col items-center">
                         <div className="w-3 h-3 rounded-full bg-amber-500" />
-                        {index < bio.timeline.length - 1 && (
-                          <div className="w-px h-full bg-zinc-700 mt-2" />
-                        )}
+                        {index < bio.timeline.length - 1 && <div className="w-px h-full bg-zinc-700 mt-2" />}
                       </div>
                       <div className="pb-6">
-                        <p className="text-sm text-amber-500 font-medium mb-1">
-                          {item.year}
-                        </p>
+                        <p className="text-sm text-amber-500 font-medium mb-1">{item.year}</p>
                         <p className="text-zinc-300">{item.event}</p>
                       </div>
                     </div>

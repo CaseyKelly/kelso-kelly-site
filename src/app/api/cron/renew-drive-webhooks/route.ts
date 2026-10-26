@@ -23,8 +23,8 @@ export async function GET(request: NextRequest) {
     const channels = await getWebhookChannels();
     const now = Date.now();
     const renewalThreshold = 18 * 60 * 60 * 1000; // 18 hours (75% of 24h lifespan)
-    
-    const driveChannels = channels.filter(c => c.resource_type === 'drive');
+
+    const driveChannels = channels.filter((c) => c.resource_type === 'drive');
     const results = {
       renewed: [] as string[],
       failed: [] as string[],
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     for (const channel of driveChannels) {
       const timeUntil = channel.expiration - now;
       const hoursUntilExpiration = Math.round(timeUntil / 3600000);
-      
+
       // Legacy channel with no folder recorded - it can't be renewed in place,
       // so retire it and let the missing-folder check below re-create it.
       if (!channel.webhook_url || !channel.folder_id) {
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
       if (timeUntil < renewalThreshold) {
         try {
           console.log(`Renewing Drive webhook ${channel.channel_id} (expires in ${hoursUntilExpiration}h)`);
-          
+
           // Stop old webhook (handles 404 gracefully)
           try {
             await stopWatchingFolder(channel.channel_id, channel.resource_id);
@@ -68,20 +68,20 @@ export async function GET(request: NextRequest) {
           } catch (error) {
             console.warn('Could not stop old channel (may already be expired):', error);
           }
-          
+
           // Create new webhook, re-watching the same folder via the same route
           const result = await setupDriveWebhook(channel.webhook_url, channel.folder_id);
           console.log(`Created new Drive webhook: ${result.channelId}`);
-          
+
           // Delete old record from database
           await deleteWebhookChannel(channel.channel_id);
-          
+
           results.renewed.push(channel.channel_id);
           console.log(`✓ Successfully renewed Drive webhook: ${channel.channel_id} → ${result.channelId}`);
         } catch (error) {
           console.error('Failed to renew Drive webhook:', error);
           results.failed.push(channel.channel_id);
-          
+
           // Send alert on failure
           await sendWebhookAlert({
             type: 'renewal_failed',
@@ -90,7 +90,9 @@ export async function GET(request: NextRequest) {
           });
         }
       } else {
-        console.log(`Drive webhook ${channel.channel_id} still has ${hoursUntilExpiration}h remaining, no renewal needed`);
+        console.log(
+          `Drive webhook ${channel.channel_id} still has ${hoursUntilExpiration}h remaining, no renewal needed`
+        );
       }
     }
 
@@ -136,17 +138,14 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error in Drive webhook renewal:', error);
-    
+
     // Send alert about cron failure
     await sendWebhookAlert({
       type: 'renewal_failed',
       message: 'Drive webhook renewal cron failed',
       details: { error: String(error) },
     });
-    
-    return NextResponse.json(
-      { success: false, error: String(error) },
-      { status: 500 }
-    );
+
+    return NextResponse.json({ success: false, error: String(error) }, { status: 500 });
   }
 }

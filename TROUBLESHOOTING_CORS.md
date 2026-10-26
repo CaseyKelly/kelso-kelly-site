@@ -1,6 +1,7 @@
 # Fixing the CORS Error in Sanity Studio
 
 ## The Error You're Seeing:
+
 ```
 CorsOriginError: CorsOriginError
 at getCurrentUser (createAuthStore.ts:132:13)
@@ -21,6 +22,7 @@ SANITY_REVALIDATE_SECRET=your-random-secret-here
 ```
 
 **Important:**
+
 - ❌ NO quotes around values
 - ❌ NO spaces around the `=` sign
 - ❌ Don't use `your-project-id-here` - use your actual project ID
@@ -48,6 +50,7 @@ Sanity needs permission to allow requests from localhost:
 8. Click **Save**
 
 **Also add** (if you're using a different port):
+
 - `http://localhost:3001`
 - `http://localhost:4000`
 
@@ -130,10 +133,11 @@ If it's empty, the `.env.local` file isn't being read properly.
    - ❌ `.env` (wrong - Next.js looks for `.env.local` first)
 
 3. **Quotes in .env.local:**
+
    ```env
    # ❌ WRONG:
    NEXT_PUBLIC_SANITY_PROJECT_ID="abc12345"
-   
+
    # ✅ CORRECT:
    NEXT_PUBLIC_SANITY_PROJECT_ID=abc12345
    ```
@@ -154,11 +158,13 @@ cat .env.local
 ```
 
 This will show your `.env.local` contents. Make sure:
+
 - File exists
 - Has your actual project ID (not `your-project-id-here`)
 - No quotes or extra spaces
 
 Then restart:
+
 ```bash
 npm run dev
 ```

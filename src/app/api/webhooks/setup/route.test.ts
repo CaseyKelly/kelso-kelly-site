@@ -37,7 +37,13 @@ describe('POST /api/webhooks/setup', () => {
 
   it('runs with a matching WEBHOOK_SETUP_SECRET bearer token', async () => {
     process.env.WEBHOOK_SETUP_SECRET = 'super-secret';
-    mockedInit.mockResolvedValue({ calendar: {}, drivePhotos: {}, driveVideos: null, cleanup: { stopped: 0, failed: 0, deleted: 0 }, errors: [] });
+    mockedInit.mockResolvedValue({
+      calendar: {},
+      drivePhotos: {},
+      driveVideos: null,
+      cleanup: { stopped: 0, failed: 0, deleted: 0 },
+      errors: [],
+    });
     const response = await POST(makeRequest({ authorization: 'Bearer super-secret' }));
     expect(response.status).toBe(200);
     expect(mockedInit).toHaveBeenCalledWith('https://kelso-kelly-site.vercel.app');
@@ -52,7 +58,13 @@ describe('POST /api/webhooks/setup', () => {
 
   it('accepts REVALIDATE_SECRET as a fallback when WEBHOOK_SETUP_SECRET is unset', async () => {
     process.env.REVALIDATE_SECRET = 'other-secret';
-    mockedInit.mockResolvedValue({ calendar: {}, drivePhotos: {}, driveVideos: null, cleanup: { stopped: 0, failed: 0, deleted: 0 }, errors: [] });
+    mockedInit.mockResolvedValue({
+      calendar: {},
+      drivePhotos: {},
+      driveVideos: null,
+      cleanup: { stopped: 0, failed: 0, deleted: 0 },
+      errors: [],
+    });
     const response = await POST(makeRequest({ authorization: 'Bearer other-secret' }));
     expect(response.status).toBe(200);
   });

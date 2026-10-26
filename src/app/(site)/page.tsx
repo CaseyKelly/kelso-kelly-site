@@ -1,13 +1,13 @@
-import Link from "next/link";
-import Image from "next/image";
-import { Mail, MapPin, ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
-import { Card, CardContent } from "@/components/ui/Card";
-import { ParallaxHeroImage } from "@/components/ui/ParallaxHeroImage";
-import { JsonLd } from "@/components/JsonLd";
-import { siteConfig } from "@/data/site-config";
-import { getUpcomingEvents, getVideos, DbEvent, DbVideo } from "@/lib/db";
+import Link from 'next/link';
+import Image from 'next/image';
+import { Mail, MapPin, ArrowRight } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
+import { Card, CardContent } from '@/components/ui/Card';
+import { ParallaxHeroImage } from '@/components/ui/ParallaxHeroImage';
+import { JsonLd } from '@/components/JsonLd';
+import { siteConfig } from '@/data/site-config';
+import { getUpcomingEvents, getVideos, DbEvent, DbVideo } from '@/lib/db';
 
 export const revalidate = 60;
 
@@ -63,31 +63,31 @@ export default async function HomePage() {
   const featuredVideo = videos.length > 0 ? videos[0] : null;
 
   const personSchema = {
-    "@context": "https://schema.org",
-    "@type": "MusicGroup",
-    name: "Kelso Kelly",
-    url: "https://www.kelsokellymusic.com",
+    '@context': 'https://schema.org',
+    '@type': 'MusicGroup',
+    name: 'Kelso Kelly',
+    url: 'https://www.kelsokellymusic.com',
     description: siteConfig.description,
     genre: siteConfig.genres,
     email: siteConfig.email,
-    image: "https://www.kelsokellymusic.com/images/kelso-performing-in-trees-optimized.webp",
+    image: 'https://www.kelsokellymusic.com/images/kelso-performing-in-trees-optimized.webp',
     sameAs: [siteConfig.socialLinks.facebook],
     location: {
-      "@type": "Place",
+      '@type': 'Place',
       address: {
-        "@type": "PostalAddress",
-        addressLocality: "Fort Collins",
-        addressRegion: "CO",
-        addressCountry: "US",
+        '@type': 'PostalAddress',
+        addressLocality: 'Fort Collins',
+        addressRegion: 'CO',
+        addressCountry: 'US',
       },
     },
     areaServed: [
-      { "@type": "City", name: "Fort Collins", containedInPlace: { "@type": "State", name: "Colorado" } },
-      { "@type": "City", name: "Loveland", containedInPlace: { "@type": "State", name: "Colorado" } },
-      { "@type": "City", name: "Greeley", containedInPlace: { "@type": "State", name: "Colorado" } },
-      { "@type": "City", name: "Windsor", containedInPlace: { "@type": "State", name: "Colorado" } },
-      { "@type": "City", name: "Longmont", containedInPlace: { "@type": "State", name: "Colorado" } },
-      { "@type": "City", name: "Boulder", containedInPlace: { "@type": "State", name: "Colorado" } },
+      { '@type': 'City', name: 'Fort Collins', containedInPlace: { '@type': 'State', name: 'Colorado' } },
+      { '@type': 'City', name: 'Loveland', containedInPlace: { '@type': 'State', name: 'Colorado' } },
+      { '@type': 'City', name: 'Greeley', containedInPlace: { '@type': 'State', name: 'Colorado' } },
+      { '@type': 'City', name: 'Windsor', containedInPlace: { '@type': 'State', name: 'Colorado' } },
+      { '@type': 'City', name: 'Longmont', containedInPlace: { '@type': 'State', name: 'Colorado' } },
+      { '@type': 'City', name: 'Boulder', containedInPlace: { '@type': 'State', name: 'Colorado' } },
     ],
   };
 
@@ -96,10 +96,7 @@ export default async function HomePage() {
       <JsonLd data={personSchema} />
       {/* Hero Section */}
       <section className="relative min-h-[90vh] flex items-end overflow-hidden">
-        <ParallaxHeroImage
-          src="/images/kelso-performing-in-trees-optimized.webp"
-          alt="Kelso Kelly performing live"
-        />
+        <ParallaxHeroImage src="/images/kelso-performing-in-trees-optimized.webp" alt="Kelso Kelly performing live" />
 
         {/* Decorative watermark */}
         <div
@@ -116,10 +113,15 @@ export default async function HomePage() {
               Northern Colorado Musician
             </p>
 
-            <h1 className="animate-fade-in animation-delay-100 font-display font-black text-white drop-shadow-2xl leading-[0.9] mb-6"
-              style={{ fontSize: 'clamp(4rem, 12vw, 9rem)' }}>
-              Kelso<br />
-              <em className="italic text-amber-400 not-italic" style={{ fontStyle: 'italic' }}>Kelly</em>
+            <h1
+              className="animate-fade-in animation-delay-100 font-display font-black text-white drop-shadow-2xl leading-[0.9] mb-6"
+              style={{ fontSize: 'clamp(4rem, 12vw, 9rem)' }}
+            >
+              Kelso
+              <br />
+              <em className="italic text-amber-400 not-italic" style={{ fontStyle: 'italic' }}>
+                Kelly
+              </em>
             </h1>
 
             <p className="animate-fade-in animation-delay-200 text-lg md:text-xl text-zinc-300 max-w-xl mb-6 drop-shadow-lg leading-relaxed">
@@ -160,12 +162,8 @@ export default async function HomePage() {
         <section className="py-24 bg-[#070504]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
-              <h2 className="font-display text-3xl md:text-4xl font-bold text-white mb-4">
-                Watch Kelso Perform
-              </h2>
-              <p className="text-zinc-400 text-lg">
-                Experience the energy and artistry of a live performance
-              </p>
+              <h2 className="font-display text-3xl md:text-4xl font-bold text-white mb-4">Watch Kelso Perform</h2>
+              <p className="text-zinc-400 text-lg">Experience the energy and artistry of a live performance</p>
             </div>
 
             <div className="max-w-5xl mx-auto">
@@ -182,17 +180,13 @@ export default async function HomePage() {
                     />
                   ) : (
                     <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-4">
-                      <p className="text-zinc-500 text-sm text-center">
-                        Unable to load video
-                      </p>
+                      <p className="text-zinc-500 text-sm text-center">Unable to load video</p>
                     </div>
                   );
                 })()}
               </div>
               {featuredVideo.description && (
-                <p className="text-center text-zinc-400 mt-6">
-                  {featuredVideo.description}
-                </p>
+                <p className="text-center text-zinc-400 mt-6">{featuredVideo.description}</p>
               )}
               <div className="text-center mt-6">
                 <Link href="/media">
@@ -211,12 +205,8 @@ export default async function HomePage() {
       <section className="py-24 bg-[#0a0704]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-white mb-4">
-              Upcoming Shows
-            </h2>
-            <p className="text-zinc-400 text-lg">
-              Catch Kelso live at these upcoming performances
-            </p>
+            <h2 className="font-display text-3xl md:text-4xl font-bold text-white mb-4">Upcoming Shows</h2>
+            <p className="text-zinc-400 text-lg">Catch Kelso live at these upcoming performances</p>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -229,14 +219,10 @@ export default async function HomePage() {
                       <span className="text-[10px] font-semibold tracking-widest uppercase text-amber-500 mb-1">
                         {month}
                       </span>
-                      <span className="font-display text-3xl font-black text-white leading-none">
-                        {day}
-                      </span>
+                      <span className="font-display text-3xl font-black text-white leading-none">{day}</span>
                     </div>
                     <div className="p-5">
-                      <h3 className="text-base font-semibold text-white mb-2 leading-snug">
-                        {event.title}
-                      </h3>
+                      <h3 className="text-base font-semibold text-white mb-2 leading-snug">{event.title}</h3>
                       {event.venue && (
                         <div className="flex items-start gap-1.5 text-zinc-400 mb-2">
                           <MapPin className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-amber-500/70" />
@@ -278,8 +264,8 @@ export default async function HomePage() {
                 &ldquo;40 years of playing music — pop, R&B, country — and a story for every song.&rdquo;
               </blockquote>
               <p className="text-zinc-400 text-lg mb-8">
-                Whether it&apos;s a solo acoustic set or performing with the Cattywampus Duo,
-                Kelso tailors every show to create the perfect atmosphere for your event.
+                Whether it&apos;s a solo acoustic set or performing with the Cattywampus Duo, Kelso tailors every show
+                to create the perfect atmosphere for your event.
               </p>
               <Link href="/bio">
                 <Button variant="outline" className="gap-2">
@@ -312,8 +298,8 @@ export default async function HomePage() {
             Let&apos;s make your event memorable.
           </h2>
           <p className="text-zinc-400 text-lg mb-10 max-w-2xl mx-auto">
-            Weddings, house concerts, backyard BBQs, corporate events, venue bookings —
-            Kelso tailors every set to the moment and the crowd.
+            Weddings, house concerts, backyard BBQs, corporate events, venue bookings — Kelso tailors every set to the
+            moment and the crowd.
           </p>
           <Link href="/contact">
             <Button size="lg" variant="outline" className="gap-2 uppercase tracking-widest text-sm">
@@ -322,7 +308,10 @@ export default async function HomePage() {
             </Button>
           </Link>
           <p className="mt-4 text-sm text-zinc-600">
-            or email <a href={`mailto:${siteConfig.email}`} className="text-zinc-500 hover:text-amber-500 transition-colors">{siteConfig.email}</a>
+            or email{' '}
+            <a href={`mailto:${siteConfig.email}`} className="text-zinc-500 hover:text-amber-500 transition-colors">
+              {siteConfig.email}
+            </a>
           </p>
         </div>
       </section>

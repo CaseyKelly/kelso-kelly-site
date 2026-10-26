@@ -27,21 +27,15 @@ async function generateIcons() {
     `;
 
     console.log('Generating favicon.ico...');
-    
+
     // Generate favicon.ico (32x32)
-    await sharp(Buffer.from(iconSvg))
-      .resize(32, 32)
-      .png()
-      .toFile('src/app/favicon.ico');
-    
+    await sharp(Buffer.from(iconSvg)).resize(32, 32).png().toFile('src/app/favicon.ico');
+
     console.log('✓ Generated: src/app/favicon.ico (32x32)');
 
     // Generate apple-touch-icon (180x180)
-    await sharp(Buffer.from(iconSvg))
-      .resize(180, 180)
-      .png()
-      .toFile('src/app/apple-icon.png');
-    
+    await sharp(Buffer.from(iconSvg)).resize(180, 180).png().toFile('src/app/apple-icon.png');
+
     console.log('✓ Generated: src/app/apple-icon.png (180x180)');
 
     // Generate Open Graph image (1200x630)
@@ -63,21 +57,16 @@ async function generateIcons() {
       </svg>
     `;
 
-    await sharp(Buffer.from(ogSvg))
-      .png()
-      .toFile('src/app/opengraph-image.png');
-    
+    await sharp(Buffer.from(ogSvg)).png().toFile('src/app/opengraph-image.png');
+
     console.log('✓ Generated: src/app/opengraph-image.png (1200x630)');
 
     // Generate Twitter card (same as OG)
-    await sharp(Buffer.from(ogSvg))
-      .png()
-      .toFile('src/app/twitter-image.png');
-    
+    await sharp(Buffer.from(ogSvg)).png().toFile('src/app/twitter-image.png');
+
     console.log('✓ Generated: src/app/twitter-image.png (1200x630)');
 
     console.log('\n✅ All icons generated successfully!');
-
   } catch (error) {
     console.error('Error generating icons:', error);
     process.exit(1);

@@ -5,8 +5,9 @@ This guide will walk you through setting up the Google Calendar + Google Drive i
 ## Overview
 
 The site now pulls content from:
+
 - **Google Calendar** → Events/Shows
-- **Google Drive** → Photos (organized by category)  
+- **Google Drive** → Photos (organized by category)
 - **Google Sheet** → Videos (YouTube links)
 
 All data is synced to a **Neon Postgres** database and cached for fast performance. Webhooks trigger automatic updates when content changes.
@@ -60,6 +61,7 @@ All data is synced to a **Neon Postgres** database and cached for fast performan
 6. **Save this file securely** - you'll need it for environment variables
 
 The JSON file will look like this:
+
 ```json
 {
   "type": "service_account",
@@ -115,6 +117,7 @@ The JSON file will look like this:
    - `promo`
 
 Your structure should look like:
+
 ```
 KelsoKellyMusic/
 └── photos/
@@ -157,16 +160,18 @@ KelsoKellyMusic/
 ### 4.2 Set Up Headers
 
 In row 1, add these column headers:
-| A | B | C | D | E |
-|---|---|---|---|---|
+
+| A     | B           | C        | D           | E     |
+| ----- | ----------- | -------- | ----------- | ----- |
 | Title | YouTube URL | Category | Description | Order |
 
 ### 4.3 Add Sample Data (optional)
 
 Example row:
-| Title | YouTube URL | Category | Description | Order |
-|---|---|---|---|---|
-| Live at Oskar Blues | https://youtube.com/watch?v=abc123 | live | Full performance from Oct 2024 | 1 |
+
+| Title               | YouTube URL                        | Category | Description                    | Order |
+| ------------------- | ---------------------------------- | -------- | ------------------------------ | ----- |
+| Live at Oskar Blues | https://youtube.com/watch?v=abc123 | live     | Full performance from Oct 2024 | 1     |
 
 **Valid categories:** `live`, `music-video`, `interview`
 
@@ -300,6 +305,7 @@ curl -X POST https://your-site.vercel.app/api/webhooks/setup \
 ```
 
 This sets up automatic syncing when:
+
 - Dad creates/updates/deletes a calendar event
 - Dad uploads photos to Google Drive
 - (For videos, you'll need to manually trigger sync after updating the sheet)
@@ -319,6 +325,7 @@ This sets up automatic syncing when:
 
 **Manual Syncs:**
 You can trigger syncs anytime:
+
 ```bash
 POST /api/sync-calendar
 POST /api/sync-photos
@@ -327,12 +334,14 @@ POST /api/sync-videos
 
 **Webhook Management:**
 Webhooks auto-renew via cron job, but you can manually renew:
+
 ```bash
 GET /api/cron/renew-webhooks
 ```
 
 **Check Sync Logs:**
 Connect to your Neon database and run:
+
 ```sql
 SELECT * FROM sync_log ORDER BY synced_at DESC LIMIT 10;
 ```
@@ -340,6 +349,7 @@ SELECT * FROM sync_log ORDER BY synced_at DESC LIMIT 10;
 ### For Your Dad (Content Updates)
 
 **Adding Events:**
+
 1. Open Google Calendar
 2. Select "Kelso Kelly Shows" calendar
 3. Create new event with:
@@ -351,6 +361,7 @@ SELECT * FROM sync_log ORDER BY synced_at DESC LIMIT 10;
 5. Site updates automatically within 1-2 minutes
 
 **Adding Photos:**
+
 1. Open Google Drive on iPad/computer
 2. Navigate to `KelsoKellyMusic/photos`
 3. Choose category folder (performance/backstage/press/promo)
@@ -358,6 +369,7 @@ SELECT * FROM sync_log ORDER BY synced_at DESC LIMIT 10;
 5. Site updates automatically within 2-5 minutes
 
 **Adding Videos:**
+
 1. Upload video to YouTube (unlisted or public)
 2. Copy the YouTube URL
 3. Open "Kelso Kelly Videos" Google Sheet
@@ -392,6 +404,7 @@ SELECT * FROM sync_log ORDER BY synced_at DESC LIMIT 10;
 ### Webhooks Expired
 
 Webhooks auto-renew daily via cron job. If they expire:
+
 ```bash
 POST /api/webhooks/setup
 ```
@@ -446,21 +459,25 @@ If you encounter issues:
 ## Summary of What We Built
 
 ✅ **Automated Content Management**
+
 - Dad creates events in Google Calendar → auto-syncs to site
 - Dad uploads photos to Google Drive → auto-optimizes and syncs to site
 - Dad updates YouTube links in Google Sheet → syncs to site
 
 ✅ **Fast & Scalable**
+
 - All data cached in Neon Postgres
 - Images optimized and stored in Vercel Blob
 - ISR with 60-second revalidation
 
 ✅ **Zero Maintenance**
+
 - Webhooks auto-renew via cron
 - Syncs trigger automatically
 - No manual builds needed
 
 ✅ **Cost Effective**
+
 - Neon: Free tier (512 MB)
 - Vercel Pro: Already have ($20/mo, includes 1TB blob storage)
 - Google Cloud: Free tier (well within limits)

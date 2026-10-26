@@ -17,18 +17,15 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('Manual calendar sync triggered');
-    
+
     const result = await syncCalendarEvents();
-    
+
     return NextResponse.json(result, {
       status: result.success ? 200 : 500,
     });
   } catch (error) {
     console.error('Error in sync-calendar API:', error);
-    return NextResponse.json(
-      { success: false, message: `${error}` },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, message: `${error}` }, { status: 500 });
   }
 }
 
@@ -45,17 +42,14 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('Calendar sync triggered via GET (cron or manual)');
-    
+
     const result = await syncCalendarEvents();
-    
+
     return NextResponse.json(result, {
       status: result.success ? 200 : 500,
     });
   } catch (error) {
     console.error('Error in sync-calendar GET:', error);
-    return NextResponse.json(
-      { success: false, message: `${error}` },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, message: `${error}` }, { status: 500 });
   }
 }

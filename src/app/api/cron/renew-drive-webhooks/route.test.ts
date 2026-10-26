@@ -134,7 +134,11 @@ describe('GET /api/cron/renew-drive-webhooks', () => {
         folder_id: 'videos-folder',
       }),
     ] as never);
-    mockedSetupDrive.mockResolvedValue({ channelId: 'drive-new', resourceId: 'res-new', expiration: Date.now() + 999999 });
+    mockedSetupDrive.mockResolvedValue({
+      channelId: 'drive-new',
+      resourceId: 'res-new',
+      expiration: Date.now() + 999999,
+    });
 
     const response = await GET(makeRequest());
     const json = await response.json();
@@ -149,10 +153,12 @@ describe('GET /api/cron/renew-drive-webhooks', () => {
     mockedExpected.mockReturnValue([
       { webhookUrl: 'https://example.com/api/webhook-drive', folderId: 'photos-folder' },
     ]);
-    mockedGetChannels.mockResolvedValue([
-      driveChannel({ webhook_url: null, folder_id: null }),
-    ] as never);
-    mockedSetupDrive.mockResolvedValue({ channelId: 'drive-new', resourceId: 'res-new', expiration: Date.now() + 999999 });
+    mockedGetChannels.mockResolvedValue([driveChannel({ webhook_url: null, folder_id: null })] as never);
+    mockedSetupDrive.mockResolvedValue({
+      channelId: 'drive-new',
+      resourceId: 'res-new',
+      expiration: Date.now() + 999999,
+    });
 
     const response = await GET(makeRequest());
     const json = await response.json();
@@ -163,9 +169,7 @@ describe('GET /api/cron/renew-drive-webhooks', () => {
   });
 
   it('does not create a duplicate when a renewal for that folder failed', async () => {
-    mockedExpected.mockReturnValue([
-      { webhookUrl: 'https://example.com/api/webhook-drive', folderId: 'folder-1' },
-    ]);
+    mockedExpected.mockReturnValue([{ webhookUrl: 'https://example.com/api/webhook-drive', folderId: 'folder-1' }]);
     mockedGetChannels.mockResolvedValue([driveChannel({ expiration: Date.now() + 60 * 1000 })] as never);
     mockedSetupDrive.mockRejectedValue(new Error('drive down'));
 
@@ -198,8 +202,6 @@ describe('GET /api/cron/renew-drive-webhooks', () => {
     mockedGetChannels.mockRejectedValue(new Error('db unreachable'));
     const response = await GET(makeRequest());
     expect(response.status).toBe(500);
-    expect(mockedAlert).toHaveBeenCalledWith(
-      expect.objectContaining({ message: 'Drive webhook renewal cron failed' })
-    );
+    expect(mockedAlert).toHaveBeenCalledWith(expect.objectContaining({ message: 'Drive webhook renewal cron failed' }));
   });
 });

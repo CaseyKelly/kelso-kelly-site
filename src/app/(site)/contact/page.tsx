@@ -1,14 +1,14 @@
-import { Metadata } from "next";
-import { Mail, MapPin, Music } from "lucide-react";
-import { SectionHeader } from "@/components/ui/SectionHeader";
-import { Card, CardContent } from "@/components/ui/Card";
-import { siteConfig } from "@/data/site-config";
+import { Metadata } from 'next';
+import { Mail, MapPin, Music } from 'lucide-react';
+import { SectionHeader } from '@/components/ui/SectionHeader';
+import { Card, CardContent } from '@/components/ui/Card';
+import { siteConfig } from '@/data/site-config';
 
 export const metadata: Metadata = {
-  title: "Book Kelso Kelly",
+  title: 'Book Kelso Kelly',
   description:
-    "Book Kelso Kelly for your wedding, house concert, backyard BBQ, or private event in Fort Collins, Loveland, Greeley, and across Northern Colorado.",
-  alternates: { canonical: "/contact" },
+    'Book Kelso Kelly for your wedding, house concert, backyard BBQ, or private event in Fort Collins, Loveland, Greeley, and across Northern Colorado.',
+  alternates: { canonical: '/contact' },
 };
 
 export default function ContactPage() {
@@ -52,9 +52,7 @@ export default function ContactPage() {
                 <Music className="h-6 w-6 text-amber-500" />
               </div>
               <h3 className="font-semibold text-white mb-2">Available For</h3>
-              <p className="text-zinc-400 text-sm">
-                Venues, Weddings, House Concerts, Backyard BBQs & More
-              </p>
+              <p className="text-zinc-400 text-sm">Venues, Weddings, House Concerts, Backyard BBQs & More</p>
             </CardContent>
           </Card>
         </div>
@@ -67,10 +65,10 @@ export default function ContactPage() {
               </div>
               <h2 className="font-display text-2xl font-bold italic text-white mb-4">Ready to Book?</h2>
               <p className="text-zinc-400 mb-8">
-                Send an email to discuss your event, check availability, or ask any questions. 
-                Include details about your event type, date, and location.
+                Send an email to discuss your event, check availability, or ask any questions. Include details about
+                your event type, date, and location.
               </p>
-              <a 
+              <a
                 href={`mailto:${siteConfig.email}`}
                 className="inline-flex items-center justify-center gap-2 px-8 py-3 text-lg font-medium rounded-lg bg-amber-500 text-zinc-950 hover:bg-amber-400 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-zinc-950 focus:ring-amber-500"
               >

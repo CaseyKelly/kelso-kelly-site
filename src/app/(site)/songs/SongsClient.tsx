@@ -1,18 +1,18 @@
-"use client";
+'use client';
 
-import { useState, useMemo } from "react";
-import { Search, Music, Filter } from "lucide-react";
-import { SectionHeader } from "@/components/ui/SectionHeader";
-import { Badge } from "@/components/ui/Badge";
-import { cn } from "@/lib/utils";
+import { useState, useMemo } from 'react';
+import { Search, Music, Filter } from 'lucide-react';
+import { SectionHeader } from '@/components/ui/SectionHeader';
+import { Badge } from '@/components/ui/Badge';
+import { cn } from '@/lib/utils';
 
 const genreLabels: Record<string, string> = {
-  pop: "Pop",
-  rnb: "Old-School R&B",
-  country: "Modern Country",
-  rock: "Classic Rock",
-  classic: "Standards & Classics",
-  other: "Other",
+  pop: 'Pop',
+  rnb: 'Old-School R&B',
+  country: 'Modern Country',
+  rock: 'Classic Rock',
+  classic: 'Standards & Classics',
+  other: 'Other',
 };
 
 interface Song {
@@ -24,7 +24,7 @@ interface Song {
 }
 
 export default function SongsClient({ songs }: { songs: Song[] }) {
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
 
   const availableGenres = useMemo(() => {
@@ -35,12 +35,11 @@ export default function SongsClient({ songs }: { songs: Song[] }) {
   const filteredSongs = useMemo(() => {
     return songs.filter((song) => {
       const matchesSearch =
-        searchQuery === "" ||
+        searchQuery === '' ||
         song.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         song.artist.toLowerCase().includes(searchQuery.toLowerCase());
 
-      const matchesGenre =
-        selectedGenre === null || song.genre === selectedGenre;
+      const matchesGenre = selectedGenre === null || song.genre === selectedGenre;
 
       return matchesSearch && matchesGenre;
     });
@@ -82,10 +81,8 @@ export default function SongsClient({ songs }: { songs: Song[] }) {
             <button
               onClick={() => setSelectedGenre(null)}
               className={cn(
-                "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
-                selectedGenre === null
-                  ? "bg-amber-500 text-zinc-950"
-                  : "bg-[#1e1710] text-zinc-300 hover:bg-[#2a2010]"
+                'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                selectedGenre === null ? 'bg-amber-500 text-zinc-950' : 'bg-[#1e1710] text-zinc-300 hover:bg-[#2a2010]'
               )}
             >
               All
@@ -95,10 +92,8 @@ export default function SongsClient({ songs }: { songs: Song[] }) {
                 key={genre}
                 onClick={() => setSelectedGenre(genre)}
                 className={cn(
-                  "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
-                  selectedGenre === genre
-                    ? "bg-amber-500 text-zinc-950"
-                    : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+                  'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                  selectedGenre === genre ? 'bg-amber-500 text-zinc-950' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
                 )}
               >
                 {genreLabels[genre] || genre}
@@ -126,12 +121,8 @@ export default function SongsClient({ songs }: { songs: Song[] }) {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-[rgba(245,158,11,0.12)]">
-                        <th className="text-left py-3 px-4 text-sm font-medium text-zinc-500">
-                          Song
-                        </th>
-                        <th className="text-left py-3 px-4 text-sm font-medium text-zinc-500">
-                          Artist
-                        </th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-zinc-500">Song</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-zinc-500">Artist</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -139,8 +130,8 @@ export default function SongsClient({ songs }: { songs: Song[] }) {
                         <tr
                           key={song.id || `${song.title}-${song.artist}-${index}`}
                           className={cn(
-                            "transition-colors hover:bg-amber-500/5",
-                            index < genreSongs.length - 1 && "border-b border-[rgba(245,158,11,0.08)]"
+                            'transition-colors hover:bg-amber-500/5',
+                            index < genreSongs.length - 1 && 'border-b border-[rgba(245,158,11,0.08)]'
                           )}
                         >
                           <td className="py-3 px-4 text-white">{song.title}</td>
@@ -156,21 +147,17 @@ export default function SongsClient({ songs }: { songs: Song[] }) {
         ) : (
           <div className="text-center py-16">
             <Music className="h-16 w-16 text-zinc-700 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-white mb-2">
-              No Songs Found
-            </h3>
-            <p className="text-zinc-400">
-              Try adjusting your search or filter criteria.
-            </p>
+            <h3 className="text-xl font-semibold text-white mb-2">No Songs Found</h3>
+            <p className="text-zinc-400">Try adjusting your search or filter criteria.</p>
           </div>
         )}
 
         <div className="mt-12 p-6 bg-[#100c07]/60 rounded-xl border border-[rgba(245,158,11,0.12)] text-center">
           <p className="text-zinc-400">
-            Don&apos;t see a song you&apos;d like to hear?{" "}
+            Don&apos;t see a song you&apos;d like to hear?{' '}
             <a href="/contact" className="text-amber-500 hover:text-amber-400 transition-colors">
               Contact Kelso
-            </a>{" "}
+            </a>{' '}
             with requests — he&apos;s always learning new material!
           </p>
         </div>

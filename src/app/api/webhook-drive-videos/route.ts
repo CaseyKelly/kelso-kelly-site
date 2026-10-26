@@ -47,10 +47,7 @@ export async function POST(request: NextRequest) {
         });
 
         // Still 200 so Google doesn't retry-storm us; the workflow's cron is the fallback
-        return NextResponse.json(
-          { received: true, dispatched: false, error: String(error) },
-          { status: 200 }
-        );
+        return NextResponse.json({ received: true, dispatched: false, error: String(error) }, { status: 200 });
       }
     }
 

@@ -1,10 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import {
-  getYouTubeThumbnail,
-  parseCategory,
-  fetchVideosFromSheet,
-  getSpreadsheetLastModified,
-} from './google-sheets';
+import { getYouTubeThumbnail, parseCategory, fetchVideosFromSheet, getSpreadsheetLastModified } from './google-sheets';
 
 // Mocks the googleapis SDK itself (not just this module's wrapper functions)
 // so a googleapis version bump that changes response shapes or error formats
@@ -16,7 +11,11 @@ const { mockValuesGet, mockDriveFilesGet } = vi.hoisted(() => ({
 
 vi.mock('googleapis', () => ({
   google: {
-    auth: { GoogleAuth: vi.fn().mockImplementation(function GoogleAuth() { return {}; }) },
+    auth: {
+      GoogleAuth: vi.fn().mockImplementation(function GoogleAuth() {
+        return {};
+      }),
+    },
     sheets: vi.fn(() => ({ spreadsheets: { values: { get: mockValuesGet } } })),
     drive: vi.fn(() => ({ files: { get: mockDriveFilesGet } })),
   },
@@ -102,7 +101,13 @@ describe('fetchVideosFromSheet (against a mocked googleapis client)', () => {
     const videos = await fetchVideosFromSheet('sheet-1');
 
     expect(videos).toEqual([
-      { title: 'Live at The Aggie', youtubeUrl: 'https://youtu.be/dQw4w9WgXcQ', category: 'live', description: 'Full set', orderIndex: 3 },
+      {
+        title: 'Live at The Aggie',
+        youtubeUrl: 'https://youtu.be/dQw4w9WgXcQ',
+        category: 'live',
+        description: 'Full set',
+        orderIndex: 3,
+      },
     ]);
     expect(mockValuesGet.mock.calls[0][0]).toMatchObject({ spreadsheetId: 'sheet-1', range: 'Videos!A:E' });
   });
@@ -114,14 +119,25 @@ describe('fetchVideosFromSheet (against a mocked googleapis client)', () => {
 
   it('skips rows missing a title or YouTube URL', async () => {
     mockValuesGet.mockResolvedValue({
-      data: { values: [['Title', 'URL'], ['', 'https://youtu.be/a'], ['No URL Song', '']] },
+      data: {
+        values: [
+          ['Title', 'URL'],
+          ['', 'https://youtu.be/a'],
+          ['No URL Song', ''],
+        ],
+      },
     });
     expect(await fetchVideosFromSheet('sheet-1')).toEqual([]);
   });
 
   it('skips rows with a non-YouTube URL', async () => {
     mockValuesGet.mockResolvedValue({
-      data: { values: [['Title', 'URL'], ['Some Song', 'https://vimeo.com/123']] },
+      data: {
+        values: [
+          ['Title', 'URL'],
+          ['Some Song', 'https://vimeo.com/123'],
+        ],
+      },
     });
     expect(await fetchVideosFromSheet('sheet-1')).toEqual([]);
   });

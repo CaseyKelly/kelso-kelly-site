@@ -24,8 +24,7 @@ const { Pool } = require('pg');
 const { createNeonHttpBridge } = require('./neon-http-bridge.js');
 const { NEON_BRIDGE_PORT } = require('./neon-bridge-port.js');
 
-const TEST_DATABASE_URL =
-  process.env.TEST_DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/postgres';
+const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/postgres';
 const APP_TABLES = ['events', 'photos', 'videos', 'sync_log', 'webhook_channels', 'youtube_uploads'];
 
 const children = [];

@@ -43,11 +43,13 @@ export class ImageProcessingError extends Error {
  */
 export function isHeicFile(filename: string, mimeType?: string): boolean {
   const ext = filename.toLowerCase();
-  return ext.endsWith('.heic') ||
-         ext.endsWith('.heif') ||
-         mimeType?.toLowerCase().includes('heif') ||
-         mimeType?.toLowerCase().includes('heic') ||
-         false;
+  return (
+    ext.endsWith('.heic') ||
+    ext.endsWith('.heif') ||
+    mimeType?.toLowerCase().includes('heif') ||
+    mimeType?.toLowerCase().includes('heic') ||
+    false
+  );
 }
 
 // ISO-BMFF brands used by HEVC-coded HEIF images (iPhone photos).
@@ -96,7 +98,7 @@ async function convertHeicToJpeg(inputBuffer: Buffer, filename?: string): Promis
  * - Resize to max dimensions
  * - Convert to WebP format (best compression)
  * - Compress with specified quality
- * 
+ *
  * @param inputBuffer The input image buffer
  * @param options Optimization options
  * @param metadata Optional metadata about the file (for better error messages)
@@ -106,12 +108,7 @@ export async function optimizeImage(
   options: ImageOptimizationOptions = {},
   metadata?: { filename?: string; mimeType?: string }
 ): Promise<OptimizedImage> {
-  const {
-    maxWidth = 1920,
-    maxHeight = 1920,
-    quality = 85,
-    format = 'webp',
-  } = options;
+  const { maxWidth = 1920, maxHeight = 1920, quality = 85, format = 'webp' } = options;
 
   // Converted outside the try below so a failed decode surfaces as the
   // UnsupportedFormatError thrown by convertHeicToJpeg, not an ImageProcessingError
@@ -124,12 +121,9 @@ export async function optimizeImage(
 
     // Get original metadata
     const metadata = await pipeline.metadata();
-    
+
     // Resize if needed (maintain aspect ratio)
-    if (
-      metadata.width && metadata.width > maxWidth ||
-      metadata.height && metadata.height > maxHeight
-    ) {
+    if ((metadata.width && metadata.width > maxWidth) || (metadata.height && metadata.height > maxHeight)) {
       pipeline = pipeline.resize(maxWidth, maxHeight, {
         fit: 'inside',
         withoutEnlargement: true,
@@ -158,15 +152,16 @@ export async function optimizeImage(
     };
   } catch (error) {
     console.error('Error optimizing image:', error);
-    
+
     // Check if this is a HEIC/HEIF format error (libheif not available)
     const errorMessage = error instanceof Error ? error.message : String(error);
     if (errorMessage.includes('heif') || errorMessage.includes('HEIF')) {
-      const format = metadata?.filename ? 
-        metadata.filename.split('.').pop()?.toUpperCase() || 'HEIC/HEIF' : 'HEIC/HEIF';
+      const format = metadata?.filename
+        ? metadata.filename.split('.').pop()?.toUpperCase() || 'HEIC/HEIF'
+        : 'HEIC/HEIF';
       throw new UnsupportedFormatError(format, error as Error);
     }
-    
+
     throw new ImageProcessingError(`Failed to optimize image: ${error}`, error as Error);
   }
 }
@@ -196,10 +191,7 @@ export async function createResponsiveSizes(
 /**
  * Generate a thumbnail from an image
  */
-export async function generateThumbnail(
-  inputBuffer: Buffer,
-  size: number = 400
-): Promise<OptimizedImage> {
+export async function generateThumbnail(inputBuffer: Buffer, size: number = 400): Promise<OptimizedImage> {
   try {
     const pipeline = sharp(inputBuffer)
       .resize(size, size, {

@@ -1,22 +1,22 @@
-import { NextRequest, NextResponse } from "next/server";
-import { Resend } from "resend";
-import { detectBot } from "@/lib/contact-spam";
-import { checkContactRateLimit, getClientIp } from "@/lib/contact-rate-limit";
+import { NextRequest, NextResponse } from 'next/server';
+import { Resend } from 'resend';
+import { detectBot } from '@/lib/contact-spam';
+import { checkContactRateLimit, getClientIp } from '@/lib/contact-rate-limit';
 
 // Validate required environment variables at initialization
 if (!process.env.RESEND_API_KEY) {
-  throw new Error("RESEND_API_KEY environment variable is not set");
+  throw new Error('RESEND_API_KEY environment variable is not set');
 }
 if (!process.env.RESEND_FROM_EMAIL) {
-  throw new Error("RESEND_FROM_EMAIL environment variable is not set");
+  throw new Error('RESEND_FROM_EMAIL environment variable is not set');
 }
 if (!process.env.CONTACT_EMAIL) {
-  throw new Error("CONTACT_EMAIL environment variable is not set");
+  throw new Error('CONTACT_EMAIL environment variable is not set');
 }
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 // Email validation regex
@@ -31,21 +31,21 @@ const MAX_LENGTHS = {
   message: 5000,
 } as const;
 
-const SUCCESS_BODY = { success: true, message: "Message sent successfully" };
+const SUCCESS_BODY = { success: true, message: 'Message sent successfully' };
 
 // Sanitize string input to prevent injection
 function sanitizeInput(input: string): string {
-  return input.trim().replace(/[<>]/g, "");
+  return input.trim().replace(/[<>]/g, '');
 }
 
 // Single-line fields end up in the subject line, so drop line breaks too
 function sanitizeSingleLine(input: string): string {
-  return sanitizeInput(input).replace(/[\r\n]+/g, " ");
+  return sanitizeInput(input).replace(/[\r\n]+/g, ' ');
 }
 
 function optionalString(value: unknown): string | null {
-  if (value === undefined || value === null) return "";
-  return typeof value === "string" ? value : null;
+  if (value === undefined || value === null) return '';
+  return typeof value === 'string' ? value : null;
 }
 
 export async function POST(request: NextRequest) {
@@ -54,16 +54,10 @@ export async function POST(request: NextRequest) {
     try {
       body = await request.json();
     } catch {
-      return NextResponse.json(
-        { success: false, message: "Invalid request body" },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, message: 'Invalid request body' }, { status: 400 });
     }
-    if (typeof body !== "object" || body === null || Array.isArray(body)) {
-      return NextResponse.json(
-        { success: false, message: "Invalid request body" },
-        { status: 400 }
-      );
+    if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+      return NextResponse.json({ success: false, message: 'Invalid request body' }, { status: 400 });
     }
     const fields = body as Record<string, unknown>;
 
@@ -82,18 +76,12 @@ export async function POST(request: NextRequest) {
     const newsletter = fields.newsletter === true;
 
     if (name === null || email === null || eventType === null || date === null || message === null) {
-      return NextResponse.json(
-        { success: false, message: "Invalid field type" },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, message: 'Invalid field type' }, { status: 400 });
     }
 
     // Validate required fields
     if (!name.trim() || !email.trim() || !message.trim()) {
-      return NextResponse.json(
-        { success: false, message: "Missing required fields" },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, message: 'Missing required fields' }, { status: 400 });
     }
 
     // Validate field lengths
@@ -110,20 +98,17 @@ export async function POST(request: NextRequest) {
 
     // Validate email format
     if (!EMAIL_REGEX.test(email.trim())) {
-      return NextResponse.json(
-        { success: false, message: "Invalid email address" },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, message: 'Invalid email address' }, { status: 400 });
     }
 
     // Per-IP limit, checked only for submissions that would actually send
     const rateLimit = await checkContactRateLimit(getClientIp(request.headers));
     if (!rateLimit.allowed) {
       return NextResponse.json(
-        { success: false, message: "Too many messages. Please try again later." },
+        { success: false, message: 'Too many messages. Please try again later.' },
         {
           status: 429,
-          headers: { "Retry-After": String(rateLimit.retryAfterSeconds ?? 3600) },
+          headers: { 'Retry-After': String(rateLimit.retryAfterSeconds ?? 3600) },
         }
       );
     }
@@ -131,8 +116,8 @@ export async function POST(request: NextRequest) {
     // Sanitize inputs
     const sanitizedName = sanitizeSingleLine(name);
     const sanitizedMessage = sanitizeInput(message);
-    const sanitizedEventType = eventType ? sanitizeSingleLine(eventType) : "";
-    const sanitizedDate = date ? sanitizeSingleLine(date) : "";
+    const sanitizedEventType = eventType ? sanitizeSingleLine(eventType) : '';
+    const sanitizedDate = date ? sanitizeSingleLine(date) : '';
     const trimmedEmail = email.trim();
 
     const recipientEmail = process.env.CONTACT_EMAIL!;
@@ -143,13 +128,13 @@ export async function POST(request: NextRequest) {
 New contact form submission from ${sanitizedName}
 
 Email: ${trimmedEmail}
-${sanitizedEventType ? `Event Type: ${sanitizedEventType}` : ""}
-${sanitizedDate ? `Event Date: ${sanitizedDate}` : ""}
+${sanitizedEventType ? `Event Type: ${sanitizedEventType}` : ''}
+${sanitizedDate ? `Event Date: ${sanitizedDate}` : ''}
 
 Message:
 ${sanitizedMessage}
 
-${newsletter ? "✓ Opted in to newsletter updates" : ""}
+${newsletter ? '✓ Opted in to newsletter updates' : ''}
 
 ---
 Submitted from kelso-kelly-music contact form
@@ -160,20 +145,19 @@ Submitted from kelso-kelly-music contact form
       from: fromEmail,
       to: recipientEmail,
       replyTo: trimmedEmail, // Allow easy reply to the person who submitted
-      subject: `New Contact Form: ${sanitizedEventType || "General Inquiry"} - ${sanitizedName}`,
+      subject: `New Contact Form: ${sanitizedEventType || 'General Inquiry'} - ${sanitizedName}`,
       text: emailContent,
     });
 
-    console.log("Email sent successfully:", emailResponse);
+    console.log('Email sent successfully:', emailResponse);
 
     return NextResponse.json(SUCCESS_BODY, { status: 200 });
-
   } catch (error) {
-    console.error("Error sending contact form email:", error);
+    console.error('Error sending contact form email:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        message: "Failed to send message"
+      {
+        success: false,
+        message: 'Failed to send message',
       },
       { status: 500 }
     );

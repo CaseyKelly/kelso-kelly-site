@@ -29,7 +29,7 @@ async function runWebhookRenewalJob(): Promise<NextResponse> {
 
     // Detect and cleanup duplicates FIRST
     const channels = await getWebhookChannels();
-    const channelsByResource = new Map<string, typeof channels[0]>();
+    const channelsByResource = new Map<string, (typeof channels)[0]>();
     const duplicatesToDelete: string[] = [];
 
     for (const channel of channels) {
@@ -53,12 +53,12 @@ async function runWebhookRenewalJob(): Promise<NextResponse> {
     // Clean up duplicates
     if (duplicatesToDelete.length > 0) {
       console.log(`Found ${duplicatesToDelete.length} duplicate webhooks, cleaning up...`);
-      
+
       for (const channelId of duplicatesToDelete) {
         try {
           // Find the full channel record to get resource_type and resource_id
-          const duplicateChannel = channels.find(c => c.channel_id === channelId);
-          
+          const duplicateChannel = channels.find((c) => c.channel_id === channelId);
+
           if (!duplicateChannel) {
             console.warn(`Channel ${channelId} not found in list, skipping stop`);
           } else {
@@ -76,7 +76,7 @@ async function runWebhookRenewalJob(): Promise<NextResponse> {
               console.warn(`Could not stop channel ${channelId}:`, stopError);
             }
           }
-          
+
           // Delete from database even if stop failed
           await deleteWebhookChannel(channelId);
           console.log(`Deleted duplicate channel from DB: ${channelId}`);
@@ -84,7 +84,7 @@ async function runWebhookRenewalJob(): Promise<NextResponse> {
           console.error(`Failed to delete duplicate ${channelId}:`, error);
         }
       }
-      
+
       // Send alert about duplicates
       await sendWebhookAlert({
         type: 'duplicate_detected',
@@ -115,9 +115,6 @@ async function runWebhookRenewalJob(): Promise<NextResponse> {
     });
   } catch (error) {
     console.error('Error in webhook renewal cron:', error);
-    return NextResponse.json(
-      { success: false, error: `${error}` },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: `${error}` }, { status: 500 });
   }
 }

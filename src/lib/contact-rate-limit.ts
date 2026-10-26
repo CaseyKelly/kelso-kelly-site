@@ -36,10 +36,7 @@ export function getClientIp(headers: Headers): string {
  */
 export async function checkContactRateLimit(ip: string): Promise<RateLimitDecision> {
   try {
-    const { count, retryAfterSeconds } = await incrementContactRateLimit(
-      ip,
-      CONTACT_RATE_LIMIT_WINDOW_SECONDS
-    );
+    const { count, retryAfterSeconds } = await incrementContactRateLimit(ip, CONTACT_RATE_LIMIT_WINDOW_SECONDS);
     if (count > CONTACT_RATE_LIMIT_MAX) {
       return { allowed: false, retryAfterSeconds };
     }

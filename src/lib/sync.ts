@@ -1,9 +1,5 @@
 import { fetchAllCalendarEvents } from './google-calendar';
-import {
-  listImageFilesInFolder,
-  downloadFile,
-  cleanFilenameForTitle,
-} from './google-drive';
+import { listImageFilesInFolder, downloadFile, cleanFilenameForTitle } from './google-drive';
 import { fetchVideosFromSheetWithThumbnails } from './google-sheets';
 import {
   sql,
@@ -53,14 +49,14 @@ export async function syncCalendarEvents(force = false): Promise<SyncResult> {
 
     // Get existing event IDs from database (optimized query)
     const existingEventIds = await getEventIds();
-    const calendarEventIds = new Set(calendarEvents.map(e => e.id));
-    
+    const calendarEventIds = new Set(calendarEvents.map((e) => e.id));
+
     // Upsert all calendar events and track changes
     let createdCount = 0;
     let updatedCount = 0;
     let unchangedCount = 0;
     let deletedCount = 0;
-    
+
     for (const event of calendarEvents) {
       const result = await upsertEvent({
         google_event_id: event.id,
@@ -72,7 +68,7 @@ export async function syncCalendarEvents(force = false): Promise<SyncResult> {
         description: event.description,
         ticket_url: event.ticketUrl,
       });
-      
+
       if (result.action === 'created') {
         createdCount++;
         console.log(`✓ Created event: ${event.title}`);
@@ -83,25 +79,24 @@ export async function syncCalendarEvents(force = false): Promise<SyncResult> {
         unchangedCount++;
       }
     }
-    
+
     // Delete events that were removed from calendar with safety guard
-    const deletedEventIds = [...existingEventIds].filter(id => !calendarEventIds.has(id));
+    const deletedEventIds = [...existingEventIds].filter((id) => !calendarEventIds.has(id));
     let deletionSkipped = false;
-    
+
     if (deletedEventIds.length > 0) {
       const deletionPercentage = (deletedEventIds.length / existingEventIds.size) * 100;
       const percentageThreshold = 20; // Warn if >20% of events would be deleted
       const minimumCountThreshold = 5; // Only guard if ≥5 events AND >20%
-      
+
       // Hybrid threshold: protect against bulk deletions (high count + high percentage)
       // Allow small cleanups even if percentage is high (e.g., 1 of 1 event = 100%)
-      const shouldGuard = deletedEventIds.length >= minimumCountThreshold && 
-                          deletionPercentage > percentageThreshold;
-      
+      const shouldGuard = deletedEventIds.length >= minimumCountThreshold && deletionPercentage > percentageThreshold;
+
       if (shouldGuard) {
         console.warn(
           `⚠️  Deletion safety threshold exceeded: ${deletedEventIds.length} events (${deletionPercentage.toFixed(1)}%) ` +
-          `would be deleted. This might indicate a sync or pagination issue. Skipping deletion to prevent data loss.`
+            `would be deleted. This might indicate a sync or pagination issue. Skipping deletion to prevent data loss.`
         );
         deletionSkipped = true;
       } else {
@@ -113,7 +108,7 @@ export async function syncCalendarEvents(force = false): Promise<SyncResult> {
         }
       }
     }
-    
+
     let summary = `Created: ${createdCount}, Updated: ${updatedCount}, Unchanged: ${unchangedCount}, Deleted: ${deletedCount}`;
     if (deletionSkipped) {
       summary += ` (${deletedEventIds.length} deletions skipped - safety threshold)`;
@@ -209,27 +204,32 @@ export async function syncPhotos(force = false): Promise<SyncResult> {
     }
 
     console.log(`Found ${files.length} images in Drive folder`);
-    console.log('Files:', files.map(f => ({ id: f.id, name: f.name })));
+    console.log(
+      'Files:',
+      files.map((f) => ({ id: f.id, name: f.name }))
+    );
 
     // Load existing photos' image data in a single query (avoids an N+1 lookup per file)
     const existingPhotos = await getPhotoImageDataByDriveId();
     console.log(`Found ${existingPhotos.size} existing photos in database`);
-    
+
     // Create a Set of Drive file IDs for efficient lookup
-    const driveFileIds = new Set(files.map(f => f.id));
+    const driveFileIds = new Set(files.map((f) => f.id));
 
     // Existing photos only need their metadata refreshed (image data is kept),
     // so update them all in one query instead of an upsert per photo (N+1)
     const existingFileUpdates = files.flatMap((file, i) => {
       if (!existingPhotos.has(file.id)) return [];
       const title = cleanFilenameForTitle(file.name);
-      return [{
-        google_drive_id: file.id,
-        title,
-        category: defaultCategory,
-        alt_text: title,
-        order_index: i,
-      }];
+      return [
+        {
+          google_drive_id: file.id,
+          title,
+          category: defaultCategory,
+          alt_text: title,
+          order_index: i,
+        },
+      ];
     });
 
     try {
@@ -254,31 +254,35 @@ export async function syncPhotos(force = false): Promise<SyncResult> {
       try {
         // New photo - download, optimize, and upload
         console.log(`Processing new photo: ${file.name}...`);
-        
+
         // Download the image
         const imageBuffer = await downloadFile(file.id);
-        
+
         // Optimize the image (with metadata for better error messages)
-        const optimized = await optimizeImage(imageBuffer, {
-          maxWidth: 1920,
-          quality: 85,
-          format: 'webp',
-        }, {
-          filename: file.name,
-          mimeType: file.mimeType,
-        });
-        
+        const optimized = await optimizeImage(
+          imageBuffer,
+          {
+            maxWidth: 1920,
+            quality: 85,
+            format: 'webp',
+          },
+          {
+            filename: file.name,
+            mimeType: file.mimeType,
+          }
+        );
+
         // Upload to Vercel Blob Storage
         const filename = `photos/${file.id}.${optimized.format}`;
         const blob = await put(filename, optimized.buffer, {
           access: 'public',
           contentType: `image/${optimized.format}`,
         });
-        
+
         // Generate title and alt text from filename
         const title = cleanFilenameForTitle(file.name);
         const altText = title;
-        
+
         // Save to database
         const result = await upsertPhoto({
           google_drive_id: file.id,
@@ -290,7 +294,7 @@ export async function syncPhotos(force = false): Promise<SyncResult> {
           height: optimized.height,
           order_index: i,
         });
-        
+
         if (result.action === 'created') {
           createdCount++;
           console.log(`✓ Created photo: ${file.name}`);
@@ -311,7 +315,7 @@ export async function syncPhotos(force = false): Promise<SyncResult> {
         // Continue with next file regardless
       }
     }
-    
+
     // Delete photos that exist in database but not in Drive
     console.log('Checking for photos to delete...');
     for (const dbPhotoId of existingPhotos.keys()) {
@@ -338,7 +342,7 @@ export async function syncPhotos(force = false): Promise<SyncResult> {
         }
       }
     }
-    
+
     // Build detailed summary message
     const summaryParts = [
       `Created: ${createdCount}`,
@@ -357,7 +361,9 @@ export async function syncPhotos(force = false): Promise<SyncResult> {
 
     // HEIC files are converted automatically, so these are files that failed to decode
     if (heicSkippedCount > 0) {
-      console.log(`ℹ️  Note: ${heicSkippedCount} file(s) were skipped because they could not be decoded. Try re-exporting them as JPEG or PNG.`);
+      console.log(
+        `ℹ️  Note: ${heicSkippedCount} file(s) were skipped because they could not be decoded. Try re-exporting them as JPEG or PNG.`
+      );
     }
 
     // Revalidate the media page
@@ -419,9 +425,7 @@ export async function syncVideos(force = false): Promise<SyncResult> {
     }
 
     // Fetch videos from Google Sheet
-    const sheetVideos = await fetchVideosFromSheetWithThumbnails(
-      process.env.GOOGLE_VIDEOS_SHEET_ID
-    );
+    const sheetVideos = await fetchVideosFromSheetWithThumbnails(process.env.GOOGLE_VIDEOS_SHEET_ID);
 
     console.log(`Found ${sheetVideos.length} videos in Google Sheet`);
 
@@ -461,8 +465,8 @@ export async function syncVideos(force = false): Promise<SyncResult> {
     }
 
     // Delete videos not in the sheet using targeted deletion (avoid fetching full data)
-    const sheetVideoUrls = new Set(sheetVideos.map(v => v.youtubeUrl));
-    const urlsToDelete = [...existingVideoUrls].filter(url => !sheetVideoUrls.has(url));
+    const sheetVideoUrls = new Set(sheetVideos.map((v) => v.youtubeUrl));
+    const urlsToDelete = [...existingVideoUrls].filter((url) => !sheetVideoUrls.has(url));
 
     for (const url of urlsToDelete) {
       await sql`DELETE FROM videos WHERE youtube_url = ${url}`;
@@ -517,14 +521,14 @@ export async function syncAll(): Promise<{
   videos: SyncResult;
 }> {
   console.log('Starting full sync...');
-  
+
   const results = {
     calendar: await syncCalendarEvents(),
     photos: await syncPhotos(),
     videos: await syncVideos(),
   };
-  
+
   console.log('Full sync completed');
-  
+
   return results;
 }

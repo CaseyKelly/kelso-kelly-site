@@ -158,9 +158,7 @@ describe('syncCalendarEvents', () => {
     // 3 of 10 existing events are gone (30%, but count < 5) -> safe to delete
     const existing = new Set(Array.from({ length: 10 }, (_, i) => `evt-${i}`));
     mocked.getEventIds.mockResolvedValue(existing);
-    mocked.fetchAllCalendarEvents.mockResolvedValue(
-      Array.from({ length: 7 }, (_, i) => makeEvent(`evt-${i}`))
-    );
+    mocked.fetchAllCalendarEvents.mockResolvedValue(Array.from({ length: 7 }, (_, i) => makeEvent(`evt-${i}`)));
     mocked.upsertEvent.mockResolvedValue({ action: 'unchanged', event: {} as never });
 
     const result = await syncCalendarEvents();
@@ -173,9 +171,7 @@ describe('syncCalendarEvents', () => {
     // 5 of 20 existing events gone = 25% and count >= 5 -> guarded
     const existing = new Set(Array.from({ length: 20 }, (_, i) => `evt-${i}`));
     mocked.getEventIds.mockResolvedValue(existing);
-    mocked.fetchAllCalendarEvents.mockResolvedValue(
-      Array.from({ length: 15 }, (_, i) => makeEvent(`evt-${i}`))
-    );
+    mocked.fetchAllCalendarEvents.mockResolvedValue(Array.from({ length: 15 }, (_, i) => makeEvent(`evt-${i}`)));
     mocked.upsertEvent.mockResolvedValue({ action: 'unchanged', event: {} as never });
 
     const result = await syncCalendarEvents();
@@ -189,9 +185,7 @@ describe('syncCalendarEvents', () => {
     // 5 of 25 = exactly 20%, count >= 5 -> percentage>20 is false -> proceeds
     const existing = new Set(Array.from({ length: 25 }, (_, i) => `evt-${i}`));
     mocked.getEventIds.mockResolvedValue(existing);
-    mocked.fetchAllCalendarEvents.mockResolvedValue(
-      Array.from({ length: 20 }, (_, i) => makeEvent(`evt-${i}`))
-    );
+    mocked.fetchAllCalendarEvents.mockResolvedValue(Array.from({ length: 20 }, (_, i) => makeEvent(`evt-${i}`)));
     mocked.upsertEvent.mockResolvedValue({ action: 'unchanged', event: {} as never });
 
     const result = await syncCalendarEvents();
@@ -228,9 +222,7 @@ describe('syncCalendarEvents', () => {
 
     expect(result.success).toBe(false);
     expect(result.message).toContain('Calendar API down');
-    expect(mocked.logSync).toHaveBeenCalledWith(
-      expect.objectContaining({ sync_type: 'calendar', status: 'error' })
-    );
+    expect(mocked.logSync).toHaveBeenCalledWith(expect.objectContaining({ sync_type: 'calendar', status: 'error' }));
   });
 });
 
@@ -297,11 +289,10 @@ describe('syncPhotos', () => {
     const result = await syncPhotos();
 
     expect(mocked.downloadFile).toHaveBeenCalledWith('heic-photo');
-    expect(mocked.optimizeImage).toHaveBeenCalledWith(
-      Buffer.from('heic-bytes'),
-      expect.anything(),
-      { filename: 'heic-photo.heic', mimeType: 'image/heic' }
-    );
+    expect(mocked.optimizeImage).toHaveBeenCalledWith(Buffer.from('heic-bytes'), expect.anything(), {
+      filename: 'heic-photo.heic',
+      mimeType: 'image/heic',
+    });
     expect(mocked.put).toHaveBeenCalledWith('photos/heic-photo.webp', expect.anything(), expect.anything());
     expect(result.details!.created).toBe(1);
     expect(result.details!.heicSkipped).toBe(0);
@@ -340,10 +331,12 @@ describe('syncPhotos', () => {
 
   it('updates metadata for all existing photos in one batch, without re-processing their images', async () => {
     mocked.listImageFilesInFolder.mockResolvedValue([driveFile('existing-a'), driveFile('existing-b')]);
-    mocked.getPhotoImageDataByDriveId.mockResolvedValue(new Map([
-      ['existing-a', { optimized_url: 'https://blob.example.com/a.webp', width: 640, height: 480 }],
-      ['existing-b', { optimized_url: 'https://blob.example.com/b.webp', width: 640, height: 480 }],
-    ]));
+    mocked.getPhotoImageDataByDriveId.mockResolvedValue(
+      new Map([
+        ['existing-a', { optimized_url: 'https://blob.example.com/a.webp', width: 640, height: 480 }],
+        ['existing-b', { optimized_url: 'https://blob.example.com/b.webp', width: 640, height: 480 }],
+      ])
+    );
     mocked.updatePhotosMetadata.mockResolvedValue(new Set(['existing-a']));
 
     const result = await syncPhotos();
@@ -362,10 +355,12 @@ describe('syncPhotos', () => {
 
   it('counts every existing photo as an error when the batch metadata update fails', async () => {
     mocked.listImageFilesInFolder.mockResolvedValue([driveFile('existing-a'), driveFile('existing-b')]);
-    mocked.getPhotoImageDataByDriveId.mockResolvedValue(new Map([
-      ['existing-a', { optimized_url: 'https://blob.example.com/a.webp', width: 640, height: 480 }],
-      ['existing-b', { optimized_url: 'https://blob.example.com/b.webp', width: 640, height: 480 }],
-    ]));
+    mocked.getPhotoImageDataByDriveId.mockResolvedValue(
+      new Map([
+        ['existing-a', { optimized_url: 'https://blob.example.com/a.webp', width: 640, height: 480 }],
+        ['existing-b', { optimized_url: 'https://blob.example.com/b.webp', width: 640, height: 480 }],
+      ])
+    );
     mocked.updatePhotosMetadata.mockRejectedValueOnce(new Error('db down'));
 
     const result = await syncPhotos();
@@ -378,9 +373,14 @@ describe('syncPhotos', () => {
     // Documents current behavior: unlike calendar sync, photo deletion has no
     // count/percentage threshold - all 4 of 4 existing photos get deleted here.
     mocked.listImageFilesInFolder.mockResolvedValue([]);
-    mocked.getPhotoImageDataByDriveId.mockResolvedValue(new Map(
-      ['p1', 'p2', 'p3', 'p4'].map(id => [id, { optimized_url: `https://blob.example.com/${id}.webp`, width: 1, height: 1 }])
-    ));
+    mocked.getPhotoImageDataByDriveId.mockResolvedValue(
+      new Map(
+        ['p1', 'p2', 'p3', 'p4'].map((id) => [
+          id,
+          { optimized_url: `https://blob.example.com/${id}.webp`, width: 1, height: 1 },
+        ])
+      )
+    );
 
     const result = await syncPhotos();
 
@@ -390,9 +390,9 @@ describe('syncPhotos', () => {
 
   it('deletes the blob for each photo removed from Drive', async () => {
     mocked.listImageFilesInFolder.mockResolvedValue([]);
-    mocked.getPhotoImageDataByDriveId.mockResolvedValue(new Map([
-      ['p1', { optimized_url: 'https://blob.example.com/p1.webp', width: 1, height: 1 }],
-    ]));
+    mocked.getPhotoImageDataByDriveId.mockResolvedValue(
+      new Map([['p1', { optimized_url: 'https://blob.example.com/p1.webp', width: 1, height: 1 }]])
+    );
 
     await syncPhotos();
 
@@ -402,9 +402,9 @@ describe('syncPhotos', () => {
 
   it('still counts the photo as deleted when the blob delete fails', async () => {
     mocked.listImageFilesInFolder.mockResolvedValue([]);
-    mocked.getPhotoImageDataByDriveId.mockResolvedValue(new Map([
-      ['p1', { optimized_url: 'https://blob.example.com/p1.webp', width: 1, height: 1 }],
-    ]));
+    mocked.getPhotoImageDataByDriveId.mockResolvedValue(
+      new Map([['p1', { optimized_url: 'https://blob.example.com/p1.webp', width: 1, height: 1 }]])
+    );
     mocked.del.mockRejectedValueOnce(new Error('blob store down'));
 
     const result = await syncPhotos();

@@ -5,13 +5,43 @@ import userEvent from '@testing-library/user-event';
 import MediaClient from './MediaClient';
 
 const photos = [
-  { id: 1, title: 'Live Show', optimized_url: 'https://blob.example.com/1.webp', alt_text: 'Live show', category: 'performance', width: 800, height: 600 },
-  { id: 2, title: 'Backstage', optimized_url: 'https://blob.example.com/2.webp', alt_text: null, category: 'backstage', width: 800, height: 600 },
+  {
+    id: 1,
+    title: 'Live Show',
+    optimized_url: 'https://blob.example.com/1.webp',
+    alt_text: 'Live show',
+    category: 'performance',
+    width: 800,
+    height: 600,
+  },
+  {
+    id: 2,
+    title: 'Backstage',
+    optimized_url: 'https://blob.example.com/2.webp',
+    alt_text: null,
+    category: 'backstage',
+    width: 800,
+    height: 600,
+  },
 ];
 
 const videos = [
-  { id: 1, title: 'Full Set', youtube_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', thumbnail_url: null, category: 'live', description: 'A great set' },
-  { id: 2, title: 'Broken Link', youtube_url: 'not-a-real-url', thumbnail_url: null, category: null, description: null },
+  {
+    id: 1,
+    title: 'Full Set',
+    youtube_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    thumbnail_url: null,
+    category: 'live',
+    description: 'A great set',
+  },
+  {
+    id: 2,
+    title: 'Broken Link',
+    youtube_url: 'not-a-real-url',
+    thumbnail_url: null,
+    category: null,
+    description: null,
+  },
 ];
 
 describe('MediaClient', () => {

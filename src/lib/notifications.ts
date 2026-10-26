@@ -34,7 +34,7 @@ export async function sendWebhookAlert(alert: WebhookAlert): Promise<void> {
 
   try {
     const subject = `🔔 Webhook Alert: ${alert.type.replace(/_/g, ' ').toUpperCase()}`;
-    
+
     const emailContent = `
 Webhook Alert: ${alert.message}
 
@@ -76,7 +76,7 @@ export async function sendWebhookSummary(summary: {
   }
 
   const hasFailures = summary.failed > 0 || summary.duplicatesCleaned > 0;
-  
+
   await sendWebhookAlert({
     type: hasFailures ? 'renewal_failed' : 'renewal_success',
     message: `Webhook renewal completed: ${summary.renewed} renewed, ${summary.failed} failed, ${summary.duplicatesCleaned} duplicates cleaned`,

@@ -20,26 +20,21 @@ export async function POST(request: NextRequest) {
     // Get the base URL from the request or environment
     // ALWAYS use the production domain for webhooks
     const baseUrl = 'https://kelso-kelly-site.vercel.app';
-    
+
     console.log('Setting up webhooks for base URL:', baseUrl);
     console.log('NEXT_PUBLIC_SITE_URL env:', process.env.NEXT_PUBLIC_SITE_URL);
     console.log('VERCEL_URL env:', process.env.VERCEL_URL);
-    
+
     const results = await initializeWebhooks(baseUrl);
-    
+
     return NextResponse.json({
       success: results.errors.length === 0,
       results,
-      message: results.errors.length === 0 
-        ? 'All webhooks set up successfully' 
-        : 'Some webhooks failed to set up',
+      message: results.errors.length === 0 ? 'All webhooks set up successfully' : 'Some webhooks failed to set up',
     });
   } catch (error) {
     console.error('Error setting up webhooks:', error);
-    return NextResponse.json(
-      { success: false, error: `${error}` },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: `${error}` }, { status: 500 });
   }
 }
 

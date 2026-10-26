@@ -18,18 +18,15 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('Manual photo sync triggered');
-    
+
     const result = await syncPhotos();
-    
+
     return NextResponse.json(result, {
       status: result.success ? 200 : 500,
     });
   } catch (error) {
     console.error('Error in sync-photos API:', error);
-    return NextResponse.json(
-      { success: false, message: `${error}` },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, message: `${error}` }, { status: 500 });
   }
 }
 
@@ -50,17 +47,14 @@ export async function GET(request: NextRequest) {
 async function runPhotoSyncJob(): Promise<NextResponse> {
   try {
     console.log('Photo sync triggered via GET (cron or manual)');
-    
+
     const result = await syncPhotos();
-    
+
     return NextResponse.json(result, {
       status: result.success ? 200 : 500,
     });
   } catch (error) {
     console.error('Error in sync-photos GET:', error);
-    return NextResponse.json(
-      { success: false, message: `${error}` },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, message: `${error}` }, { status: 500 });
   }
 }

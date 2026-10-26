@@ -1,15 +1,20 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:recommended",
-    ":semanticCommitsDisabled"
-  ],
+  "extends": ["config:recommended", ":semanticCommitsDisabled", ":dependencyDashboard"],
   "timezone": "America/New_York",
   "labels": ["dependencies"],
   "prHourlyLimit": 0,
   "prConcurrentLimit": 0,
+  "rebaseWhen": "behind-base-branch",
+  "minimumReleaseAge": "1 day",
   "lockFileMaintenance": {
     "enabled": true
+  },
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["security"],
+    "automerge": true,
+    "schedule": ["at any time"]
   },
   "packageRules": [
     {
@@ -38,6 +43,14 @@
       "description": "eslint-config-next's plugin set (eslint-plugin-react, eslint-plugin-import, eslint-plugin-jsx-a11y) only declares support up to ESLint 9 - lift once a Next.js release supports ESLint 10",
       "matchPackageNames": ["eslint"],
       "allowedVersions": "<10.0.0"
+    },
+    {
+      "description": "GitHub Actions - own group (so automerge isn't blocked by npm updates sharing the minor/patch group), automerge minor/patch",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "github actions",
+      "automerge": true,
+      "automergeType": "pr"
     }
   ]
 }

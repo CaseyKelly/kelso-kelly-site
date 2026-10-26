@@ -23,12 +23,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   // Authentication check
   const authHeader = request.headers.get('authorization');
   const expectedAuth = `Bearer ${process.env.WEBHOOK_SETUP_SECRET}`;
-  
+
   if (!process.env.WEBHOOK_SETUP_SECRET || authHeader !== expectedAuth) {
-    return NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: 401 }
-    );
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
@@ -41,7 +38,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       const timeUntil = expiration - now;
       const isExpired = timeUntil <= 0;
       const isExpiringSoon = !isExpired && timeUntil < renewalThreshold;
-      
+
       return {
         channel_id: channel.channel_id,
         resource_type: channel.resource_type,
@@ -61,13 +58,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       duplicates.set(webhook.resource_type, count + 1);
     }
 
-    const hasDuplicates = Array.from(duplicates.values()).some(count => count > 1);
+    const hasDuplicates = Array.from(duplicates.values()).some((count) => count > 1);
 
     const summary = {
       total: webhooks.length,
-      active: webhooks.filter(w => w.status === 'active').length,
-      expiring_soon: webhooks.filter(w => w.status === 'expiring_soon').length,
-      expired: webhooks.filter(w => w.status === 'expired').length,
+      active: webhooks.filter((w) => w.status === 'active').length,
+      expiring_soon: webhooks.filter((w) => w.status === 'expiring_soon').length,
+      expired: webhooks.filter((w) => w.status === 'expired').length,
       has_duplicates: hasDuplicates,
       duplicates_by_type: hasDuplicates ? Object.fromEntries(duplicates) : null,
     };
@@ -79,10 +76,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     });
   } catch (error) {
     console.error('Error getting webhook status:', error);
-    return NextResponse.json(
-      { error: `Failed to get webhook status: ${error}` },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: `Failed to get webhook status: ${error}` }, { status: 500 });
   }
 }
 
@@ -91,15 +85,15 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
  */
 function formatTimeUntil(ms: number): string {
   if (ms <= 0) return 'expired';
-  
+
   const hours = Math.floor(ms / (1000 * 60 * 60));
   const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
-  
+
   if (hours > 24) {
     const days = Math.floor(hours / 24);
     const remainingHours = hours % 24;
     return `${days}d ${remainingHours}h`;
   }
-  
+
   return `${hours}h ${minutes}m`;
 }

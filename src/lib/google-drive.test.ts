@@ -23,7 +23,11 @@ const { mockFilesList, mockFilesGet, mockFilesWatch, mockChannelsStop } = vi.hoi
 
 vi.mock('googleapis', () => ({
   google: {
-    auth: { GoogleAuth: vi.fn().mockImplementation(function GoogleAuth() { return {}; }) },
+    auth: {
+      GoogleAuth: vi.fn().mockImplementation(function GoogleAuth() {
+        return {};
+      }),
+    },
     drive: vi.fn(() => ({
       files: { list: mockFilesList, get: mockFilesGet, watch: mockFilesWatch },
       channels: { stop: mockChannelsStop },
@@ -84,7 +88,14 @@ describe('listImageFilesInFolder (against a mocked googleapis client)', () => {
     mockFilesList.mockResolvedValue({
       data: {
         files: [
-          { id: 'file-1', name: 'sunset.jpg', mimeType: 'image/jpeg', createdTime: '2026-01-01T00:00:00Z', modifiedTime: '2026-01-02T00:00:00Z', size: '1024' },
+          {
+            id: 'file-1',
+            name: 'sunset.jpg',
+            mimeType: 'image/jpeg',
+            createdTime: '2026-01-01T00:00:00Z',
+            modifiedTime: '2026-01-02T00:00:00Z',
+            size: '1024',
+          },
         ],
       },
     });
@@ -92,7 +103,14 @@ describe('listImageFilesInFolder (against a mocked googleapis client)', () => {
     const files = await listImageFilesInFolder('folder-1');
 
     expect(files).toEqual([
-      { id: 'file-1', name: 'sunset.jpg', mimeType: 'image/jpeg', createdTime: '2026-01-01T00:00:00Z', modifiedTime: '2026-01-02T00:00:00Z', size: '1024' },
+      {
+        id: 'file-1',
+        name: 'sunset.jpg',
+        mimeType: 'image/jpeg',
+        createdTime: '2026-01-01T00:00:00Z',
+        modifiedTime: '2026-01-02T00:00:00Z',
+        size: '1024',
+      },
     ]);
     expect(mockFilesList.mock.calls[0][0]).toMatchObject({
       q: expect.stringContaining("mimeType contains 'image/'"),
@@ -122,10 +140,7 @@ describe('downloadFile (against a mocked googleapis client)', () => {
     const buffer = await downloadFile('file-1');
 
     expect(buffer.toString()).toBe('hello world');
-    expect(mockFilesGet).toHaveBeenCalledWith(
-      { fileId: 'file-1', alt: 'media' },
-      { responseType: 'stream' }
-    );
+    expect(mockFilesGet).toHaveBeenCalledWith({ fileId: 'file-1', alt: 'media' }, { responseType: 'stream' });
   });
 
   it('rejects when the underlying stream emits an error', async () => {

@@ -139,7 +139,7 @@ export async function getVideos() {
  */
 export async function getEventIds(): Promise<Set<string>> {
   const result = await sql`SELECT google_event_id FROM events`;
-  return new Set(result.map(r => r.google_event_id as string));
+  return new Set(result.map((r) => r.google_event_id as string));
 }
 
 /**
@@ -148,7 +148,7 @@ export async function getEventIds(): Promise<Set<string>> {
  */
 export async function getPhotoIds(): Promise<Set<string>> {
   const result = await sql`SELECT google_drive_id FROM photos`;
-  return new Set(result.map(r => r.google_drive_id as string));
+  return new Set(result.map((r) => r.google_drive_id as string));
 }
 
 /**
@@ -157,7 +157,7 @@ export async function getPhotoIds(): Promise<Set<string>> {
  */
 export async function getVideoUrls(): Promise<Set<string>> {
   const result = await sql`SELECT youtube_url FROM videos`;
-  return new Set(result.map(r => r.youtube_url as string));
+  return new Set(result.map((r) => r.youtube_url as string));
 }
 
 export async function upsertEvent(event: {
@@ -206,20 +206,20 @@ export async function upsertEvent(event: {
       events.ticket_url IS DISTINCT FROM EXCLUDED.ticket_url
     RETURNING *, (xmax = 0) AS inserted
   `;
-  
+
   if (result.length === 0) {
     // No row returned means WHERE clause prevented update (unchanged)
     const existing = await sql`SELECT *, true AS inserted FROM events WHERE google_event_id = ${event.google_event_id}`;
     return { action: 'unchanged', event: existing[0] as DbEvent };
   }
-  
+
   const row = result[0] as DbEvent & { inserted: boolean };
-  
+
   // inserted = true means it was an INSERT
   // inserted = false and row returned means it was an UPDATE
-  return { 
+  return {
     action: row.inserted ? 'created' : 'updated',
-    event: row
+    event: row,
   };
 }
 
@@ -275,18 +275,18 @@ export async function upsertPhoto(photo: {
       photos.order_index IS DISTINCT FROM EXCLUDED.order_index
     RETURNING *, (xmax = 0) AS inserted
   `;
-  
+
   if (result.length === 0) {
     // No row returned means WHERE clause prevented update (unchanged)
     const existing = await sql`SELECT *, true AS inserted FROM photos WHERE google_drive_id = ${photo.google_drive_id}`;
     return { action: 'unchanged', photo: existing[0] as DbPhoto };
   }
-  
+
   const row = result[0] as DbPhoto & { inserted: boolean };
-  
-  return { 
+
+  return {
     action: row.inserted ? 'created' : 'updated',
-    photo: row
+    photo: row,
   };
 }
 
@@ -333,7 +333,7 @@ export async function upsertVideo(video: {
       videos.order_index IS DISTINCT FROM EXCLUDED.order_index
     RETURNING *, (xmax = 0) AS inserted
   `;
-  
+
   if (result.length === 0) {
     // No row returned means WHERE clause prevented update (unchanged)
     const existing = await sql`SELECT *, false AS inserted FROM videos WHERE youtube_url = ${video.youtube_url}`;
@@ -342,12 +342,12 @@ export async function upsertVideo(video: {
     }
     return { action: 'unchanged', video: existing[0] as DbVideo };
   }
-  
+
   const row = result[0] as DbVideo & { inserted: boolean };
-  
-  return { 
+
+  return {
     action: row.inserted ? 'created' : 'updated',
-    video: row
+    video: row,
   };
 }
 
@@ -412,14 +412,16 @@ export type PhotoImageData = Pick<DbPhoto, 'optimized_url' | 'width' | 'height'>
  */
 export async function getPhotoImageDataByDriveId(): Promise<Map<string, PhotoImageData>> {
   const result = await sql`SELECT google_drive_id, optimized_url, width, height FROM photos`;
-  return new Map(result.map(r => [
-    r.google_drive_id as string,
-    {
-      optimized_url: r.optimized_url as string,
-      width: r.width as number | null,
-      height: r.height as number | null,
-    },
-  ]));
+  return new Map(
+    result.map((r) => [
+      r.google_drive_id as string,
+      {
+        optimized_url: r.optimized_url as string,
+        width: r.width as number | null,
+        height: r.height as number | null,
+      },
+    ])
+  );
 }
 
 /**
@@ -429,13 +431,15 @@ export async function getPhotoImageDataByDriveId(): Promise<Map<string, PhotoIma
  * metadata hasn't changed are skipped, so their updated_at isn't bumped.
  * @returns The Drive IDs of the photos that were actually updated
  */
-export async function updatePhotosMetadata(photos: {
-  google_drive_id: string;
-  title: string;
-  category: DbPhoto['category'];
-  alt_text?: string | null;
-  order_index: number;
-}[]): Promise<Set<string>> {
+export async function updatePhotosMetadata(
+  photos: {
+    google_drive_id: string;
+    title: string;
+    category: DbPhoto['category'];
+    alt_text?: string | null;
+    order_index: number;
+  }[]
+): Promise<Set<string>> {
   if (photos.length === 0) return new Set();
 
   const result = await sql`
@@ -446,11 +450,11 @@ export async function updatePhotosMetadata(photos: {
       order_index = data.order_index,
       updated_at = NOW()
     FROM UNNEST(
-      ${photos.map(p => p.google_drive_id)}::text[],
-      ${photos.map(p => p.title)}::text[],
-      ${photos.map(p => p.category)}::text[],
-      ${photos.map(p => p.alt_text ?? null)}::text[],
-      ${photos.map(p => p.order_index)}::int[]
+      ${photos.map((p) => p.google_drive_id)}::text[],
+      ${photos.map((p) => p.title)}::text[],
+      ${photos.map((p) => p.category)}::text[],
+      ${photos.map((p) => p.alt_text ?? null)}::text[],
+      ${photos.map((p) => p.order_index)}::int[]
     ) AS data(google_drive_id, title, category, alt_text, order_index)
     WHERE photos.google_drive_id = data.google_drive_id AND (
       photos.title IS DISTINCT FROM data.title OR
@@ -461,7 +465,7 @@ export async function updatePhotosMetadata(photos: {
     RETURNING photos.google_drive_id
   `;
 
-  return new Set(result.map(r => r.google_drive_id as string));
+  return new Set(result.map((r) => r.google_drive_id as string));
 }
 
 /**
@@ -499,7 +503,8 @@ export async function upsertWebhookChannel(channel: {
   webhook_url?: string;
   folder_id?: string;
 }) {
-  const webhookUrl = channel.webhook_url ||
+  const webhookUrl =
+    channel.webhook_url ||
     (channel.resource_type === 'calendar'
       ? 'https://kelso-kelly-site.vercel.app/api/webhook-calendar'
       : 'https://kelso-kelly-site.vercel.app/api/webhook-drive');
@@ -573,10 +578,7 @@ export interface ContactRateLimitResult {
  * instances can't both slip under the limit: it starts a fresh window when
  * the IP is new or its window has expired, and otherwise increments the count.
  */
-export async function incrementContactRateLimit(
-  ip: string,
-  windowSeconds: number
-): Promise<ContactRateLimitResult> {
+export async function incrementContactRateLimit(ip: string, windowSeconds: number): Promise<ContactRateLimitResult> {
   const result = await sql`
     INSERT INTO contact_rate_limits (ip, window_start, request_count)
     VALUES (${ip}, NOW(), 1)

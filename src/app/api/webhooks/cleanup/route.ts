@@ -12,12 +12,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // Authentication check
   const authHeader = request.headers.get('authorization');
   const expectedAuth = `Bearer ${process.env.WEBHOOK_SETUP_SECRET}`;
-  
+
   if (!process.env.WEBHOOK_SETUP_SECRET || authHeader !== expectedAuth) {
-    return NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: 401 }
-    );
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
@@ -71,10 +68,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
   } catch (error) {
     console.error('Error in cleanup:', error);
-    return NextResponse.json(
-      { error: String(error) },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }
 
@@ -89,7 +83,7 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
     description: 'Clean up all webhook channels and optionally reinitialize',
     authentication: 'Bearer token in Authorization header (WEBHOOK_SETUP_SECRET)',
     body: {
-      reinitialize: 'boolean (optional) - Set to true to re-setup webhooks after cleanup'
+      reinitialize: 'boolean (optional) - Set to true to re-setup webhooks after cleanup',
     },
     note: 'Use this to fix duplicate webhooks or reset the webhook system',
   });

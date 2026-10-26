@@ -1,63 +1,63 @@
-'use client'
+'use client';
 
-import { useEffect, useRef, useState } from 'react'
-import Image from 'next/image'
+import { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 
 // Image moves at half the scroll speed; keep in sync with .hero-parallax in globals.css
-const PARALLAX_SPEED = 0.5
+const PARALLAX_SPEED = 0.5;
 
 interface ParallaxHeroImageProps {
-  src: string
-  alt: string
+  src: string;
+  alt: string;
 }
 
 export function ParallaxHeroImage({ src, alt }: ParallaxHeroImageProps) {
-  const imageRef = useRef<HTMLDivElement>(null)
-  const [objectPosition, setObjectPosition] = useState('center 27%')
+  const imageRef = useRef<HTMLDivElement>(null);
+  const [objectPosition, setObjectPosition] = useState('center 27%');
 
   useEffect(() => {
-    const mq = window.matchMedia('(min-width: 1024px)')
+    const mq = window.matchMedia('(min-width: 1024px)');
     const update = (e: MediaQueryList | MediaQueryListEvent) => {
-      setObjectPosition(e.matches ? 'center 27%' : 'center 60%')
-    }
-    update(mq)
-    mq.addEventListener('change', update)
-    return () => mq.removeEventListener('change', update)
-  }, [])
+      setObjectPosition(e.matches ? 'center 27%' : 'center 60%');
+    };
+    update(mq);
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
 
   useEffect(() => {
     // Browsers with scroll-driven animations run the parallax from CSS
     // (.hero-parallax in globals.css) on the compositor thread, in sync with
     // native scrolling. A JS scroll listener lags a frame behind touch
     // scrolling on mobile, which makes the image visibly jitter.
-    if (CSS.supports('animation-timeline: scroll()')) return
+    if (CSS.supports('animation-timeline: scroll()')) return;
 
     // Without CSS support, skip the effect on any device with touch input
     // (including hybrid laptops/tablets), where the JS version shakes, and
     // for users who prefer reduced motion.
-    if (window.matchMedia('(any-pointer: coarse), (prefers-reduced-motion: reduce)').matches) return
+    if (window.matchMedia('(any-pointer: coarse), (prefers-reduced-motion: reduce)').matches) return;
 
-    let frame = 0
+    let frame = 0;
     const handleScroll = () => {
-      if (frame) return
+      if (frame) return;
       frame = requestAnimationFrame(() => {
-        frame = 0
-        if (!imageRef.current) return
+        frame = 0;
+        if (!imageRef.current) return;
 
         // Clamp so the transform stops updating once the hero is off screen
-        const scrolled = Math.min(Math.max(window.scrollY, 0), window.innerHeight)
-        imageRef.current.style.transform = `translateY(${scrolled * PARALLAX_SPEED}px)`
-      })
-    }
+        const scrolled = Math.min(Math.max(window.scrollY, 0), window.innerHeight);
+        imageRef.current.style.transform = `translateY(${scrolled * PARALLAX_SPEED}px)`;
+      });
+    };
 
-    handleScroll()
-    window.addEventListener('scroll', handleScroll, { passive: true })
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
 
     return () => {
-      window.removeEventListener('scroll', handleScroll)
-      cancelAnimationFrame(frame)
-    }
-  }, [])
+      window.removeEventListener('scroll', handleScroll);
+      cancelAnimationFrame(frame);
+    };
+  }, []);
 
   return (
     <div className="absolute inset-0">
@@ -85,5 +85,5 @@ export function ParallaxHeroImage({ src, alt }: ParallaxHeroImageProps) {
       {/* Vignette effect */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.2)_100%)]" />
     </div>
-  )
+  );
 }

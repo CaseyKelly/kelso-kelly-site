@@ -22,18 +22,15 @@ export async function POST(request: NextRequest) {
     const force = searchParams.get('force') === 'true';
 
     console.log('Manual video sync triggered', force ? '(forced)' : '');
-    
+
     const result = await syncVideos(force);
-    
+
     return NextResponse.json(result, {
       status: result.success ? 200 : 500,
     });
   } catch (error) {
     console.error('Error in sync-videos API:', error);
-    return NextResponse.json(
-      { success: false, message: `${error}` },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, message: `${error}` }, { status: 500 });
   }
 }
 
@@ -54,17 +51,14 @@ export async function GET(request: NextRequest) {
 async function runVideoSyncJob(): Promise<NextResponse> {
   try {
     console.log('Video sync triggered via GET (cron or manual)');
-    
+
     const result = await syncVideos();
-    
+
     return NextResponse.json(result, {
       status: result.success ? 200 : 500,
     });
   } catch (error) {
     console.error('Error in sync-videos GET:', error);
-    return NextResponse.json(
-      { success: false, message: `${error}` },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, message: `${error}` }, { status: 500 });
   }
 }

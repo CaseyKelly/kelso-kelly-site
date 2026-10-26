@@ -19,8 +19,8 @@ function getDriveClient() {
       scopes: ['https://www.googleapis.com/auth/drive.readonly'],
     });
 
-    const drive = google.drive({ 
-      version: 'v3', 
+    const drive = google.drive({
+      version: 'v3',
       auth,
     });
 
@@ -46,19 +46,16 @@ export interface DriveFile {
  * @param folderId The Google Drive folder ID
  * @param mimeTypeFilter Optional MIME type filter (e.g., 'image/jpeg')
  */
-export async function listFilesInFolder(
-  folderId: string,
-  mimeTypeFilter?: string
-): Promise<DriveFile[]> {
+export async function listFilesInFolder(folderId: string, mimeTypeFilter?: string): Promise<DriveFile[]> {
   const drive = getDriveClient();
-  
+
   try {
     let query = `'${folderId}' in parents and trashed = false`;
-    
+
     if (mimeTypeFilter) {
       query += ` and mimeType contains '${mimeTypeFilter}'`;
     }
-    
+
     const response = await drive.files.list({
       q: query,
       fields: 'files(id, name, mimeType, createdTime, modifiedTime, size)',
@@ -78,10 +75,10 @@ export async function listFilesInFolder(
  */
 export async function listImageFilesInFolder(folderId: string): Promise<DriveFile[]> {
   const drive = getDriveClient();
-  
+
   try {
     const query = `'${folderId}' in parents and trashed = false and (mimeType contains 'image/')`;
-    
+
     const response = await drive.files.list({
       q: query,
       fields: 'files(id, name, mimeType, createdTime, modifiedTime, size)',
@@ -102,7 +99,7 @@ export async function listImageFilesInFolder(folderId: string): Promise<DriveFil
  */
 export async function downloadFile(fileId: string): Promise<Buffer> {
   const drive = getDriveClient();
-  
+
   try {
     const response = await drive.files.get(
       {
@@ -117,7 +114,7 @@ export async function downloadFile(fileId: string): Promise<Buffer> {
     // Convert stream to buffer
     const chunks: Buffer[] = [];
     const stream = response.data as unknown as Readable;
-    
+
     return new Promise((resolve, reject) => {
       stream.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
       stream.on('error', reject);
@@ -134,7 +131,7 @@ export async function downloadFile(fileId: string): Promise<Buffer> {
  */
 export async function getFileMetadata(fileId: string): Promise<DriveFile> {
   const drive = getDriveClient();
-  
+
   try {
     const response = await drive.files.get({
       fileId: fileId,
@@ -153,7 +150,7 @@ export async function getFileMetadata(fileId: string): Promise<DriveFile> {
  */
 export async function getFolderMetadata(folderId: string) {
   const drive = getDriveClient();
-  
+
   try {
     const response = await drive.files.get({
       fileId: folderId,
@@ -174,15 +171,12 @@ export async function getFolderMetadata(folderId: string) {
 /**
  * Find a folder by name within a parent folder
  */
-export async function findFolderByName(
-  parentFolderId: string,
-  folderName: string
-): Promise<string | null> {
+export async function findFolderByName(parentFolderId: string, folderName: string): Promise<string | null> {
   const drive = getDriveClient();
-  
+
   try {
     const query = `'${parentFolderId}' in parents and name = '${folderName}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
-    
+
     const response = await drive.files.list({
       q: query,
       fields: 'files(id, name)',
@@ -203,11 +197,11 @@ export async function findFolderByName(
  */
 export async function watchFolder(webhookUrl: string, channelId: string, folderId: string) {
   const drive = getDriveClient();
-  
+
   try {
     // Webhook expires after 24 hours for Drive, will need to be renewed
-    const expiration = Date.now() + (24 * 60 * 60 * 1000);
-    
+    const expiration = Date.now() + 24 * 60 * 60 * 1000;
+
     const response = await drive.files.watch({
       fileId: folderId,
       requestBody: {
@@ -234,7 +228,7 @@ export async function watchFolder(webhookUrl: string, channelId: string, folderI
  */
 export async function stopWatchingFolder(channelId: string, resourceId: string) {
   const drive = getDriveClient();
-  
+
   try {
     await drive.channels.stop({
       requestBody: {
@@ -244,13 +238,14 @@ export async function stopWatchingFolder(channelId: string, resourceId: string) 
     });
   } catch (error) {
     // If the channel is already gone (404), that's fine - just log and continue
-    const status = (error as { status?: number; code?: number } | null)?.status
-      ?? (error as { status?: number; code?: number } | null)?.code;
+    const status =
+      (error as { status?: number; code?: number } | null)?.status ??
+      (error as { status?: number; code?: number } | null)?.code;
     if (status === 404) {
       console.log(`Drive channel '${channelId}' already expired/deleted, continuing...`);
       return;
     }
-    
+
     console.error('Error stopping Drive watch:', error);
     throw new Error(`Failed to stop Drive watch: ${error}`);
   }
@@ -261,12 +256,12 @@ export async function stopWatchingFolder(channelId: string, resourceId: string) 
  */
 export function getCategoryFromFolderName(folderName: string): 'performance' | 'backstage' | 'press' | 'promo' | null {
   const normalized = folderName.toLowerCase().trim();
-  
+
   if (normalized.includes('performance')) return 'performance';
   if (normalized.includes('backstage')) return 'backstage';
   if (normalized.includes('press')) return 'press';
   if (normalized.includes('promo')) return 'promo';
-  
+
   return null;
 }
 
@@ -276,12 +271,12 @@ export function getCategoryFromFolderName(folderName: string): 'performance' | '
 export function cleanFilenameForTitle(filename: string): string {
   // Remove file extension
   const nameWithoutExt = filename.replace(/\.[^/.]+$/, '');
-  
+
   // Replace hyphens, underscores with spaces
   let cleaned = nameWithoutExt.replace(/[-_]/g, ' ');
-  
+
   // Capitalize first letter of each word
-  cleaned = cleaned.replace(/\b\w/g, char => char.toUpperCase());
-  
+  cleaned = cleaned.replace(/\b\w/g, (char) => char.toUpperCase());
+
   return cleaned;
 }

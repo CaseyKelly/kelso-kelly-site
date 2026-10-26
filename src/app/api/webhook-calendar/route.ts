@@ -8,7 +8,7 @@ export const maxDuration = 60; // Allow up to 60 seconds for calendar sync to co
 /**
  * POST /api/webhook-calendar
  * Receives webhook notifications from Google Calendar when events change
- * 
+ *
  * Google sends two types of notifications:
  * 1. Sync message (X-Goog-Resource-State: sync) - initial setup confirmation
  * 2. Change notification (X-Goog-Resource-State: exists/not_exists) - actual changes
@@ -18,13 +18,13 @@ export async function POST(request: NextRequest) {
     const resourceState = request.headers.get('x-goog-resource-state');
     const channelId = request.headers.get('x-goog-channel-id');
     const resourceId = request.headers.get('x-goog-resource-id');
-    
+
     console.log('Calendar webhook received:', {
       resourceState,
       channelId,
       resourceId,
     });
-    
+
     // Sync message - just acknowledge
     if (resourceState === 'sync') {
       console.log('Calendar webhook sync message received');
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       console.warn('Calendar webhook rejected: unknown channel', { channelId, resourceId });
       return NextResponse.json({ error: 'Unknown channel' }, { status: 403 });
     }
-    
+
     // Actual change notification - trigger sync
     if (resourceState === 'exists' || resourceState === 'not_exists') {
       console.log('Calendar changed, triggering sync...');
@@ -46,35 +46,41 @@ export async function POST(request: NextRequest) {
         const syncStartTime = Date.now();
         const result = await syncCalendarEvents(true);
         const syncDuration = Date.now() - syncStartTime;
-        
+
         console.log(`Calendar sync completed in ${syncDuration}ms:`, result);
-        
+
         if (result.success) {
-          return NextResponse.json({ 
-            received: true, 
+          return NextResponse.json({
+            received: true,
             synced: true,
             result: result.message,
             details: result.details,
-            duration: syncDuration
+            duration: syncDuration,
           });
         } else {
           console.error('Calendar sync failed:', result.message);
-          return NextResponse.json({ 
-            received: true, 
-            synced: false,
-            error: result.message 
-          }, { status: 200 }); // Still return 200 to prevent Google retries
+          return NextResponse.json(
+            {
+              received: true,
+              synced: false,
+              error: result.message,
+            },
+            { status: 200 }
+          ); // Still return 200 to prevent Google retries
         }
       } catch (error) {
         console.error('Calendar sync threw an error:', error);
-        return NextResponse.json({ 
-          received: true, 
-          synced: false,
-          error: `Sync failed: ${error}` 
-        }, { status: 200 }); // Still return 200 to prevent Google retries
+        return NextResponse.json(
+          {
+            received: true,
+            synced: false,
+            error: `Sync failed: ${error}`,
+          },
+          { status: 200 }
+        ); // Still return 200 to prevent Google retries
       }
     }
-    
+
     return NextResponse.json({ received: true });
   } catch (error) {
     console.error('Error processing calendar webhook:', error);

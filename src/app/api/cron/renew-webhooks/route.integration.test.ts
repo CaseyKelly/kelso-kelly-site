@@ -89,8 +89,22 @@ describe('GET /api/cron/renew-webhooks - duplicate channel cleanup', () => {
   });
 
   it('does not treat Drive channels for different folders (photos vs videos) as duplicates', async () => {
-    await upsertWebhookChannel({ channel_id: 'drive-photos', resource_type: 'drive', resource_id: 'r1', expiration: Date.now() + 1000, webhook_url: 'https://x/api/webhook-drive', folder_id: 'photos-folder' });
-    await upsertWebhookChannel({ channel_id: 'drive-videos', resource_type: 'drive', resource_id: 'r2', expiration: Date.now() + 999999, webhook_url: 'https://x/api/webhook-drive-videos', folder_id: 'videos-folder' });
+    await upsertWebhookChannel({
+      channel_id: 'drive-photos',
+      resource_type: 'drive',
+      resource_id: 'r1',
+      expiration: Date.now() + 1000,
+      webhook_url: 'https://x/api/webhook-drive',
+      folder_id: 'photos-folder',
+    });
+    await upsertWebhookChannel({
+      channel_id: 'drive-videos',
+      resource_type: 'drive',
+      resource_id: 'r2',
+      expiration: Date.now() + 999999,
+      webhook_url: 'https://x/api/webhook-drive-videos',
+      folder_id: 'videos-folder',
+    });
 
     const response = await GET(makeRequest());
     const json = await response.json();
@@ -102,20 +116,42 @@ describe('GET /api/cron/renew-webhooks - duplicate channel cleanup', () => {
   });
 
   it('sends an alert when duplicates are cleaned up', async () => {
-    await upsertWebhookChannel({ channel_id: 'drive-early', resource_type: 'drive', resource_id: 'r1', expiration: Date.now() + 1000, webhook_url: 'https://x/api/webhook-drive', folder_id: 'f1' });
-    await upsertWebhookChannel({ channel_id: 'drive-late', resource_type: 'drive', resource_id: 'r2', expiration: Date.now() + 999999, webhook_url: 'https://x/api/webhook-drive', folder_id: 'f1' });
+    await upsertWebhookChannel({
+      channel_id: 'drive-early',
+      resource_type: 'drive',
+      resource_id: 'r1',
+      expiration: Date.now() + 1000,
+      webhook_url: 'https://x/api/webhook-drive',
+      folder_id: 'f1',
+    });
+    await upsertWebhookChannel({
+      channel_id: 'drive-late',
+      resource_type: 'drive',
+      resource_id: 'r2',
+      expiration: Date.now() + 999999,
+      webhook_url: 'https://x/api/webhook-drive',
+      folder_id: 'f1',
+    });
 
     await GET(makeRequest());
 
-    expect(mockedAlert).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'duplicate_detected' })
-    );
+    expect(mockedAlert).toHaveBeenCalledWith(expect.objectContaining({ type: 'duplicate_detected' }));
     expect(mockedStopFolder).toHaveBeenCalledWith('drive-early', 'r1');
   });
 
   it('deletes the duplicate row even when stopping it on Google fails', async () => {
-    await upsertWebhookChannel({ channel_id: 'cal-early', resource_type: 'calendar', resource_id: 'r1', expiration: Date.now() + 1000 });
-    await upsertWebhookChannel({ channel_id: 'cal-late', resource_type: 'calendar', resource_id: 'r2', expiration: Date.now() + 999999 });
+    await upsertWebhookChannel({
+      channel_id: 'cal-early',
+      resource_type: 'calendar',
+      resource_id: 'r1',
+      expiration: Date.now() + 1000,
+    });
+    await upsertWebhookChannel({
+      channel_id: 'cal-late',
+      resource_type: 'calendar',
+      resource_id: 'r2',
+      expiration: Date.now() + 999999,
+    });
     mockedStopCalendar.mockRejectedValue(new Error('already expired'));
 
     const response = await GET(makeRequest());

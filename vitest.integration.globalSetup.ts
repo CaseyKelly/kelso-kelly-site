@@ -10,10 +10,17 @@ const { NEON_BRIDGE_PORT } = require('./scripts/neon-bridge-port.js');
 // standard `postgres:16` service-container credentials used in CI (see
 // .github/workflows/ci.yml) and in the local docker command documented in
 // package.json's test:integration script / CLAUDE.md.
-const TEST_DATABASE_URL =
-  process.env.TEST_DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/postgres';
+const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/postgres';
 
-const APP_TABLES = ['events', 'photos', 'videos', 'sync_log', 'webhook_channels', 'youtube_uploads', 'contact_rate_limits'];
+const APP_TABLES = [
+  'events',
+  'photos',
+  'videos',
+  'sync_log',
+  'webhook_channels',
+  'youtube_uploads',
+  'contact_rate_limits',
+];
 
 export default async function setup() {
   const pool = new Pool({ connectionString: TEST_DATABASE_URL });

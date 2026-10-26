@@ -102,7 +102,11 @@ describe('optimizeImage', () => {
   });
 
   it('converts a HEIC photo even when its filename and mime type do not say HEIC', async () => {
-    const result = await optimizeImage(sampleHeic, { format: 'webp' }, { filename: 'photo.jpg', mimeType: 'image/jpeg' });
+    const result = await optimizeImage(
+      sampleHeic,
+      { format: 'webp' },
+      { filename: 'photo.jpg', mimeType: 'image/jpeg' }
+    );
     expect(result.format).toBe('webp');
     expect(result.width).toBe(64);
   });
@@ -110,7 +114,11 @@ describe('optimizeImage', () => {
   it('converts a mislabeled HEIC photo whose major brand is mif1', async () => {
     const mif1Major = Buffer.from(sampleHeic);
     mif1Major.write('mif1', 8, 'ascii');
-    const result = await optimizeImage(mif1Major, { format: 'webp' }, { filename: 'photo.jpg', mimeType: 'image/jpeg' });
+    const result = await optimizeImage(
+      mif1Major,
+      { format: 'webp' },
+      { filename: 'photo.jpg', mimeType: 'image/jpeg' }
+    );
     expect(result.format).toBe('webp');
     expect(result.width).toBe(64);
   });

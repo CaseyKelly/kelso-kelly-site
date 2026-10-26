@@ -28,11 +28,11 @@ Kelso Kelly has been on stage for 40+ years playing pop, old-school R&B, and mod
 
 So the site treats **Google Workspace as the CMS**. No admin panel, no logins, no "can you update the website for me?" texts.
 
-| He does this… | …and the site does this |
-| --- | --- |
-| Adds a gig to Google Calendar | The **Schedule** page shows it in seconds |
+| He does this…                                             | …and the site does this                                                                  |
+| --------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Adds a gig to Google Calendar                             | The **Schedule** page shows it in seconds                                                |
 | Drops photos (even iPhone HEIC files) into a Drive folder | They're converted, resized to WebP, pushed to a CDN, and appear in the **Media** gallery |
-| Drops a raw video file into a Drive folder | A GitHub Actions job uploads it to YouTube and the video shows up on the site |
+| Drops a raw video file into a Drive folder                | A GitHub Actions job uploads it to YouTube and the video shows up on the site            |
 
 ## Architecture
 
@@ -81,12 +81,15 @@ flowchart LR
 ## Engineering highlights
 
 ### ⚡ Real-time sync with self-healing webhooks
+
 Google Calendar and Drive push change notifications to webhook endpoints the moment content changes. Those subscriptions expire (Calendar after 7 days, Drive after 24 hours), so a cron job renews them automatically. If a channel is lost or never created, the renewal job notices the gap and **recreates it on its next run**, so the system recovers on its own within 12 hours. Webhook URLs are public, so each incoming notification is checked against the channels stored in the database, and forged requests are rejected before they can trigger any work. Failed renewals, duplicates, and expired channels trigger email alerts.
 
 ### 🔁 Belt-and-suspenders delivery
+
 Webhooks handle the fast path and Vercel cron jobs act as a safety net, so a dropped notification never means stale content. A database-backed throttle (`sync_log`) keeps webhook bursts from stampeding the sync, and because it lives in Postgres it still works across serverless cold starts.
 
 ### 🧠 Idempotent upserts that know what changed
+
 Every sync uses a single SQL statement that inserts, updates, **or does nothing**, and reports which one happened:
 
 ```sql
@@ -99,25 +102,28 @@ RETURNING *, (xmax = 0) AS inserted
 Unchanged rows are skipped entirely, so `updated_at` stays meaningful and re-running a sync is always safe.
 
 ### 🖼️ Image pipeline that handles whatever a phone throws at it
+
 Photos are downloaded from Drive, auto-converted from HEIC (detected by the file's ISO-BMFF brand, not just its extension), resized to a max of 1920px, re-encoded as WebP with Sharp, and served from Vercel Blob. Photos that were already processed skip the expensive work, and metadata updates are batched to avoid N+1 queries.
 
 ### 🎬 YouTube uploads off the request path
+
 The YouTube Data API won't accept service-account credentials for uploads, and large video files would blow through a serverless function's time limit. So the Drive webhook instead fires a `workflow_dispatch` that runs the upload on a GitHub Actions runner with a two-hour budget, using a stored OAuth refresh token. A 6-hour scheduled run catches anything the webhook misses.
 
 ### 🔍 SEO and observability
-The site ships with JSON-LD structured data, a generated sitemap and `robots.txt`, and Open Graph/Twitter cards so it ranks for local searches like *"live musician Fort Collins"*. Sentry covers the server, edge, and browser runtimes, plus a global error boundary, and Vercel Analytics tracks traffic.
+
+The site ships with JSON-LD structured data, a generated sitemap and `robots.txt`, and Open Graph/Twitter cards so it ranks for local searches like _"live musician Fort Collins"_. Sentry covers the server, edge, and browser runtimes, plus a global error boundary, and Vercel Analytics tracks traffic.
 
 ## Testing
 
 Five CI jobs gate every pull request:
 
-| Job | What it covers |
-| --- | --- |
-| **Lint + typecheck** | ESLint and strict `tsc --noEmit` |
-| **Unit tests** | Vitest + Testing Library for the sync engine, Google API clients, image optimizer, webhooks, throttling, and React components, with coverage reports |
-| **DB integration** | Runs the real upsert SQL against a **Postgres 18** service container |
-| **Build** | Full `next build` |
-| **E2E** | Playwright drives Chromium through every page, backed by a seeded Postgres |
+| Job                  | What it covers                                                                                                                                       |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Lint + typecheck** | ESLint and strict `tsc --noEmit`                                                                                                                     |
+| **Unit tests**       | Vitest + Testing Library for the sync engine, Google API clients, image optimizer, webhooks, throttling, and React components, with coverage reports |
+| **DB integration**   | Runs the real upsert SQL against a **Postgres 18** service container                                                                                 |
+| **Build**            | Full `next build`                                                                                                                                    |
+| **E2E**              | Playwright drives Chromium through every page, backed by a seeded Postgres                                                                           |
 
 **The interesting bit:** the Neon serverless driver only talks HTTP to Neon's hosted proxy. It has no way to connect to a plain Postgres instance. Rather than mock the database layer (and stop testing the SQL that matters most), [`scripts/neon-http-bridge.js`](scripts/neon-http-bridge.js) reimplements Neon's `/sql` HTTP protocol on top of `pg`. That lets integration and E2E tests run the production `db.ts` code, **completely unmodified**, against a real database.
 
@@ -125,15 +131,15 @@ Dependencies stay current through Renovate, with CI as the gate.
 
 ## Tech stack
 
-| Layer | Tools |
-| --- | --- |
-| **Framework** | Next.js 16 (App Router, Server Components, ISR), React 19, TypeScript |
-| **Styling** | Tailwind CSS 4, Lucide icons |
-| **Data** | Neon serverless Postgres, Vercel Blob |
+| Layer            | Tools                                                                     |
+| ---------------- | ------------------------------------------------------------------------- |
+| **Framework**    | Next.js 16 (App Router, Server Components, ISR), React 19, TypeScript     |
+| **Styling**      | Tailwind CSS 4, Lucide icons                                              |
+| **Data**         | Neon serverless Postgres, Vercel Blob                                     |
 | **Integrations** | Google Calendar, Drive, and Sheets APIs, YouTube Data API, Resend (email) |
-| **Media** | Sharp, heic-convert |
-| **Infra** | Vercel (hosting + cron), GitHub Actions |
-| **Quality** | Vitest, Testing Library, Playwright, ESLint, Sentry, Renovate |
+| **Media**        | Sharp, heic-convert                                                       |
+| **Infra**        | Vercel (hosting + cron), GitHub Actions                                   |
+| **Quality**      | Vitest, Testing Library, Playwright, ESLint, Sentry, Renovate             |
 
 ## Project structure
 

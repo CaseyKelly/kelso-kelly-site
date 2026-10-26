@@ -62,9 +62,7 @@ describe('withCronMonitor', () => {
   });
 
   it('wraps cron requests with the monitor config', async () => {
-    const response = await withCronMonitor(cronRequest(), monitor, async () =>
-      NextResponse.json({ success: true })
-    );
+    const response = await withCronMonitor(cronRequest(), monitor, async () => NextResponse.json({ success: true }));
     expect(response.status).toBe(200);
     expect(mockedWithMonitor).toHaveBeenCalledWith('sync-calendar', expect.any(Function), {
       schedule: { type: 'crontab', value: '0 */2 * * *' },

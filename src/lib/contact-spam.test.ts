@@ -1,10 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  detectBot,
-  CONTACT_HONEYPOT_FIELD,
-  CONTACT_ELAPSED_FIELD,
-  MIN_SUBMIT_ELAPSED_MS,
-} from './contact-spam';
+import { detectBot, CONTACT_HONEYPOT_FIELD, CONTACT_ELAPSED_FIELD, MIN_SUBMIT_ELAPSED_MS } from './contact-spam';
 
 const human = { [CONTACT_HONEYPOT_FIELD]: '', [CONTACT_ELAPSED_FIELD]: 15_000 };
 

@@ -84,9 +84,7 @@ describe('POST /api/contact', () => {
   });
 
   it('strips angle brackets from name and message to prevent injection', async () => {
-    await POST(
-      makeRequest({ ...validBody, name: '<script>evil</script>Jane', message: 'Hi <b>there</b>' })
-    );
+    await POST(makeRequest({ ...validBody, name: '<script>evil</script>Jane', message: 'Hi <b>there</b>' }));
     const sentEmail = mockSend.mock.calls[0][0];
     expect(sentEmail.text).not.toContain('<');
     expect(sentEmail.text).not.toContain('>');

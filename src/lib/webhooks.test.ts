@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renewWebhooks, cleanupAllWebhooks, initializeWebhooks, getExpectedDriveWebhooks, setupDriveWebhook } from './webhooks';
+import {
+  renewWebhooks,
+  cleanupAllWebhooks,
+  initializeWebhooks,
+  getExpectedDriveWebhooks,
+  setupDriveWebhook,
+} from './webhooks';
 import { watchCalendar, stopWatchingCalendar } from './google-calendar';
 import { watchFolder, stopWatchingFolder } from './google-drive';
 import { upsertWebhookChannel, getWebhookChannels, deleteWebhookChannel } from './db';
@@ -55,8 +61,16 @@ beforeEach(() => {
   // without this a rejection configured in one test would leak into the next.
   mocked.stopWatchingCalendar.mockResolvedValue(undefined as never);
   mocked.stopWatchingFolder.mockResolvedValue(undefined as never);
-  mocked.watchCalendar.mockResolvedValue({ channelId: 'default-cal', resourceId: 'default-res', expiration: Date.now() + 1000 });
-  mocked.watchFolder.mockResolvedValue({ channelId: 'default-drive', resourceId: 'default-res', expiration: Date.now() + 1000 });
+  mocked.watchCalendar.mockResolvedValue({
+    channelId: 'default-cal',
+    resourceId: 'default-res',
+    expiration: Date.now() + 1000,
+  });
+  mocked.watchFolder.mockResolvedValue({
+    channelId: 'default-drive',
+    resourceId: 'default-res',
+    expiration: Date.now() + 1000,
+  });
 });
 
 describe('renewWebhooks', () => {
@@ -239,7 +253,9 @@ describe('setupDriveWebhook', () => {
     mocked.watchFolder.mockResolvedValue({ channelId: 'drive-new', resourceId: 'res-new', expiration: 1 });
     mocked.upsertWebhookChannel.mockRejectedValue(new Error('db down'));
 
-    await expect(setupDriveWebhook('https://example.com/api/webhook-drive', 'photos-folder')).rejects.toThrow('db down');
+    await expect(setupDriveWebhook('https://example.com/api/webhook-drive', 'photos-folder')).rejects.toThrow(
+      'db down'
+    );
     expect(mocked.stopWatchingFolder).toHaveBeenCalledWith('drive-new', 'res-new');
   });
 

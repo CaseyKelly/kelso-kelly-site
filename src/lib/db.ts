@@ -564,3 +564,46 @@ export async function deleteWebhookChannel(channelId: string) {
     WHERE channel_id = ${channelId}
   `;
 }
+
+export interface ContactRateLimitResult {
+  /** Requests made by this IP in the current window, including this one */
+  count: number;
+  /** Whole seconds until the current window resets */
+  retryAfterSeconds: number;
+}
+
+/**
+ * Count one contact form submission against `ip` in a fixed window.
+ * A single atomic upsert, so concurrent requests on different serverless
+ * instances can't both slip under the limit: it starts a fresh window when
+ * the IP is new or its window has expired, and otherwise increments the count.
+ */
+export async function incrementContactRateLimit(ip: string, windowSeconds: number): Promise<ContactRateLimitResult> {
+  const result = await sql`
+    INSERT INTO contact_rate_limits (ip, window_start, request_count)
+    VALUES (${ip}, NOW(), 1)
+    ON CONFLICT (ip)
+    DO UPDATE SET
+      window_start = CASE
+        WHEN contact_rate_limits.window_start <= NOW() - make_interval(secs => ${windowSeconds})
+          THEN NOW()
+        ELSE contact_rate_limits.window_start
+      END,
+      request_count = CASE
+        WHEN contact_rate_limits.window_start <= NOW() - make_interval(secs => ${windowSeconds})
+          THEN 1
+        ELSE contact_rate_limits.request_count + 1
+      END
+    RETURNING
+      request_count,
+      GREATEST(
+        CEIL(EXTRACT(EPOCH FROM (window_start + make_interval(secs => ${windowSeconds}) - NOW()))),
+        1
+      )::int AS retry_after_seconds
+  `;
+  const row = result[0] as { request_count: number; retry_after_seconds: number };
+  return {
+    count: Number(row.request_count),
+    retryAfterSeconds: Number(row.retry_after_seconds),
+  };
+}

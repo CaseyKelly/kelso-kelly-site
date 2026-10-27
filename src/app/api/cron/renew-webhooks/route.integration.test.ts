@@ -162,6 +162,25 @@ describe('GET /api/cron/renew-webhooks - duplicate channel cleanup', () => {
     expect(remaining).toEqual([{ channel_id: 'cal-late' }]);
   });
 
+  it('reports success: false when a webhook renewal fails', async () => {
+    mockedRenew.mockResolvedValue({ renewed: ['cal-ok'], failed: ['cal-broken'] });
+
+    const response = await GET(makeRequest());
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(json.success).toBe(false);
+    expect(json.failed).toEqual(['cal-broken']);
+  });
+
+  it('reports success: true when every renewal succeeds', async () => {
+    mockedRenew.mockResolvedValue({ renewed: ['cal-ok'], failed: [] });
+
+    const json = await (await GET(makeRequest())).json();
+
+    expect(json.success).toBe(true);
+  });
+
   it('cleans up old sync logs and reports the count', async () => {
     await logSync({ sync_type: 'calendar', status: 'success', message: 'recent' });
     await sql`INSERT INTO sync_log (sync_type, status, message, synced_at) VALUES ('calendar', 'success', 'ancient', NOW() - INTERVAL '31 days')`;

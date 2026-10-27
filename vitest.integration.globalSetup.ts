@@ -12,7 +12,15 @@ const { NEON_BRIDGE_PORT } = require('./scripts/neon-bridge-port.js');
 // package.json's test:integration script / CLAUDE.md.
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/postgres';
 
-const APP_TABLES = ['events', 'photos', 'videos', 'sync_log', 'webhook_channels', 'youtube_uploads'];
+const APP_TABLES = [
+  'events',
+  'photos',
+  'videos',
+  'sync_log',
+  'webhook_channels',
+  'youtube_uploads',
+  'contact_rate_limits',
+];
 
 export default async function setup() {
   const pool = new Pool({ connectionString: TEST_DATABASE_URL });

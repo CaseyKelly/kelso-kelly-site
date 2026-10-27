@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { syncCalendarEvents } from '@/lib/sync';
+import { CRON_MONITORS, withCronMonitor } from '@/lib/cron-monitor';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // 60 seconds max execution time
@@ -34,13 +35,17 @@ export async function POST(request: NextRequest) {
  * Trigger calendar sync via cron or manual request
  */
 export async function GET(request: NextRequest) {
-  try {
-    // Verify cron secret if configured
-    const authHeader = request.headers.get('authorization');
-    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  // Verify cron secret if configured (before, and outside, the cron monitor)
+  const authHeader = request.headers.get('authorization');
+  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
+  return withCronMonitor(request, CRON_MONITORS['/api/sync-calendar'], runCalendarSyncJob);
+}
+
+async function runCalendarSyncJob(): Promise<NextResponse> {
+  try {
     console.log('Calendar sync triggered via GET (cron or manual)');
 
     const result = await syncCalendarEvents();

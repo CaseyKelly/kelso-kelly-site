@@ -66,17 +66,21 @@ async function runDriveWebhookRenewalJob(): Promise<NextResponse> {
         try {
           console.log(`Renewing Drive webhook ${channel.channel_id} (expires in ${hoursUntilExpiration}h)`);
 
-          // Stop old webhook (handles 404 gracefully)
+          // Create the new webhook BEFORE stopping the old one. If Google rejects
+          // the new watch (e.g. a transient 5xx), the old channel is still live
+          // and keeps delivering notifications until the next run retries.
+          const result = await setupDriveWebhook(channel.webhook_url, channel.folder_id);
+          console.log(`Created new Drive webhook: ${result.channelId}`);
+
+          // Stop old webhook (handles 404 gracefully). If this fails the old
+          // channel just expires on its own; its notifications get a 403 once
+          // its record is deleted below.
           try {
             await stopWatchingFolder(channel.channel_id, channel.resource_id);
             console.log(`Stopped old Drive channel: ${channel.channel_id}`);
           } catch (error) {
             console.warn('Could not stop old channel (may already be expired):', error);
           }
-
-          // Create new webhook, re-watching the same folder via the same route
-          const result = await setupDriveWebhook(channel.webhook_url, channel.folder_id);
-          console.log(`Created new Drive webhook: ${result.channelId}`);
 
           // Delete old record from database
           await deleteWebhookChannel(channel.channel_id);

@@ -102,9 +102,20 @@ describe('GET /api/cron/renew-drive-webhooks', () => {
     expect(mockedSetupDrive).not.toHaveBeenCalled();
   });
 
-  it('renews a Drive channel expiring within 18h: stop, create, delete old record', async () => {
+  it('renews a Drive channel expiring within 18h: create, stop old, delete old record', async () => {
+    const callOrder: string[] = [];
     mockedGetChannels.mockResolvedValue([driveChannel({ expiration: Date.now() + 60 * 1000 })] as never);
-    mockedSetupDrive.mockResolvedValue({ channelId: 'drive-2', resourceId: 'res-2', expiration: Date.now() + 999999 });
+    mockedSetupDrive.mockImplementation(async () => {
+      callOrder.push('create');
+      return { channelId: 'drive-2', resourceId: 'res-2', expiration: Date.now() + 999999 };
+    });
+    mockedStopFolder.mockImplementation(async () => {
+      callOrder.push('stop');
+    });
+    mockedDelete.mockImplementation(async () => {
+      callOrder.push('delete');
+      return [] as never;
+    });
 
     const response = await GET(makeRequest());
     const json = await response.json();
@@ -112,8 +123,23 @@ describe('GET /api/cron/renew-drive-webhooks', () => {
     expect(mockedStopFolder).toHaveBeenCalledWith('drive-1', 'res-1');
     expect(mockedSetupDrive).toHaveBeenCalledWith('https://example.com/api/webhook-drive', 'folder-1');
     expect(mockedDelete).toHaveBeenCalledWith('drive-1');
+    expect(callOrder).toEqual(['create', 'stop', 'delete']);
     expect(json.renewed).toBe(1);
     expect(json.success).toBe(true);
+  });
+
+  it('keeps the old channel live and its record in place when creating the new webhook fails', async () => {
+    mockedGetChannels.mockResolvedValue([driveChannel({ expiration: Date.now() + 60 * 1000 })] as never);
+    mockedSetupDrive.mockRejectedValue(new Error('Unknown Error.'));
+
+    const response = await GET(makeRequest());
+    const json = await response.json();
+
+    expect(mockedStopFolder).not.toHaveBeenCalled();
+    expect(mockedDelete).not.toHaveBeenCalled();
+    expect(json.failed).toBe(1);
+    expect(json.success).toBe(false);
+    expect(mockedAlert).toHaveBeenCalledWith(expect.objectContaining({ type: 'renewal_failed' }));
   });
 
   it('tolerates a failure stopping the old channel and still renews', async () => {

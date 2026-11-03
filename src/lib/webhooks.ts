@@ -124,6 +124,12 @@ export async function renewWebhooks(baseUrl: string) {
       try {
         console.log(`Renewing ${channel.resource_type} webhook...`);
 
+        // Set up the new webhook FIRST, before stopping the old channel or
+        // deleting its record. If setup fails, the old channel stays live and
+        // its record stays in place for retry on the next cron run.
+        const result = await setupCalendarWebhook(`${baseUrl}/api/webhook-calendar`);
+        const newChannelId: string = result.channelId;
+
         // Stop old webhook (handles 404 gracefully if already expired)
         try {
           await stopWatchingCalendar(channel.channel_id, channel.resource_id);
@@ -133,11 +139,6 @@ export async function renewWebhooks(baseUrl: string) {
             stopError
           );
         }
-
-        // Set up new webhook FIRST (before deleting old record)
-        // This ensures if setup fails, the old record exists for retry on next cron run
-        const result = await setupCalendarWebhook(`${baseUrl}/api/webhook-calendar`);
-        const newChannelId: string = result.channelId;
 
         // Now that new webhook is created, delete old channel from database
         await deleteWebhookChannel(channel.channel_id);

@@ -97,7 +97,7 @@ describe('renewWebhooks', () => {
     expect(result).toEqual({ renewed: [], failed: [] });
   });
 
-  it('renews a calendar channel expiring within 24h: stop old, create new, then delete old record', async () => {
+  it('renews a calendar channel expiring within 24h: create new, stop old, then delete old record', async () => {
     const callOrder: string[] = [];
     mocked.getWebhookChannels.mockResolvedValue([
       makeChannel({ channel_id: 'calendar-old', expiration: Date.now() + 60 * 1000 }),
@@ -116,7 +116,7 @@ describe('renewWebhooks', () => {
 
     const result = await renewWebhooks('https://example.com');
 
-    expect(callOrder).toEqual(['stop', 'create', 'delete']);
+    expect(callOrder).toEqual(['create', 'stop', 'delete']);
     expect(mocked.deleteWebhookChannel).toHaveBeenCalledWith('calendar-old');
     expect(result.renewed).toEqual(['calendar-old']);
   });
@@ -147,6 +147,8 @@ describe('renewWebhooks', () => {
     const result = await renewWebhooks('https://example.com');
 
     expect(mocked.deleteWebhookChannel).not.toHaveBeenCalled();
+    // The old channel must stay live so notifications keep arriving until a retry succeeds
+    expect(mocked.stopWatchingCalendar).not.toHaveBeenCalled();
     expect(result.failed).toEqual(['calendar-old']);
     expect(result.renewed).toEqual([]);
   });

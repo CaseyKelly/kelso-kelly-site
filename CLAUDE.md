@@ -178,6 +178,7 @@ GOOGLE_DRIVE_VIDEOS_FOLDER_ID      # Same value as the Vercel env var — Drive 
 YOUTUBE_CLIENT_ID                 # OAuth client (Desktop app type) for YouTube uploads
 YOUTUBE_CLIENT_SECRET             # OAuth client secret
 YOUTUBE_REFRESH_TOKEN             # One-time-obtained refresh token, see scripts/get-youtube-refresh-token.js
+CRON_SECRET                       # Same value as the Vercel env var; after an upload the script calls /api/sync-videos so the video shows on the site immediately (without it, the site picks it up on the next 4-hourly sync)
 ```
 
 The YouTube Data API doesn't accept service-account auth for uploads, so this pipeline runs as a scheduled GitHub Actions workflow (`.github/workflows/sync-drive-videos-to-youtube.yml`), not a Vercel function — uploads can be slow/large enough to risk a function timeout.

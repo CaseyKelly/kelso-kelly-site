@@ -116,9 +116,12 @@ async function triggerSiteVideoSync() {
   }
 
   const siteUrl = (process.env.SITE_URL || DEFAULT_SITE_URL).replace(/\/+$/, '');
-  console.log(`Triggering site video sync at ${siteUrl}/api/sync-videos...`);
+  // force=true bypasses syncVideos()' 3-minute throttle, which would otherwise
+  // answer 200 without reading the sheet if another sync ran just before.
+  const syncUrl = `${siteUrl}/api/sync-videos?force=true`;
+  console.log(`Triggering site video sync at ${syncUrl}...`);
   try {
-    const response = await fetch(`${siteUrl}/api/sync-videos`, {
+    const response = await fetch(syncUrl, {
       method: 'POST',
       headers: { Authorization: `Bearer ${process.env.CRON_SECRET}` },
     });

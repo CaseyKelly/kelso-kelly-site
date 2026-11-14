@@ -153,6 +153,12 @@ async function main() {
   });
   const youtube = google.youtube({ version: 'v3', auth: getYoutubeAuth() });
 
+  console.log(
+    process.env.CRON_SECRET
+      ? 'Site refresh after upload: enabled (CRON_SECRET is set)'
+      : 'Site refresh after upload: disabled (CRON_SECRET is not set)'
+  );
+
   console.log('Listing video files in Drive folder...');
   const { data } = await drive.files.list({
     q: `'${process.env.GOOGLE_DRIVE_VIDEOS_FOLDER_ID}' in parents and trashed = false and mimeType contains 'video/'`,

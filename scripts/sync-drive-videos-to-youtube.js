@@ -21,6 +21,10 @@
  *   DATABASE_URL - tracks which Drive files are already uploaded
  * Optional:
  *   YOUTUBE_PRIVACY_STATUS - 'public' | 'unlisted' | 'private' (default: 'unlisted')
+ *   CRON_SECRET - same value as the Vercel env var; when set, the site's
+ *     /api/sync-videos is called after any upload so the new video shows on
+ *     the site right away instead of waiting for the 4-hourly Vercel cron
+ *   SITE_URL - base URL for that call (default: https://www.kelsokellymusic.com)
  */
 
 const { google } = require('googleapis');
@@ -99,6 +103,41 @@ async function insertVideoRow(sheets, spreadsheetId, sheetId, title, youtubeUrl)
   });
 }
 
+const DEFAULT_SITE_URL = 'https://www.kelsokellymusic.com';
+
+// Asks the site to re-read the Videos sheet so new uploads appear immediately.
+// Returns false (after logging why) if the site sync could not be triggered.
+async function triggerSiteVideoSync() {
+  if (!process.env.CRON_SECRET) {
+    console.warn(
+      'CRON_SECRET is not set, so the site was not refreshed; new videos will appear after the next 4-hourly sync.'
+    );
+    return true;
+  }
+
+  const siteUrl = (process.env.SITE_URL || DEFAULT_SITE_URL).replace(/\/+$/, '');
+  // force=true bypasses syncVideos()' 3-minute throttle, which would otherwise
+  // answer 200 without reading the sheet if another sync ran just before.
+  const syncUrl = `${siteUrl}/api/sync-videos?force=true`;
+  console.log(`Triggering site video sync at ${syncUrl}...`);
+  try {
+    const response = await fetch(syncUrl, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${process.env.CRON_SECRET}` },
+    });
+    const body = await response.text();
+    if (!response.ok) {
+      console.error(`Site video sync failed with HTTP ${response.status}: ${body}`);
+      return false;
+    }
+    console.log(`Site video sync succeeded: ${body}`);
+    return true;
+  } catch (error) {
+    console.error('Site video sync request failed:', error);
+    return false;
+  }
+}
+
 async function main() {
   const missing = REQUIRED_ENV_VARS.filter((key) => !process.env[key]);
   if (missing.length > 0) {
@@ -116,6 +155,12 @@ async function main() {
     auth: getServiceAccountAuth(['https://www.googleapis.com/auth/spreadsheets']),
   });
   const youtube = google.youtube({ version: 'v3', auth: getYoutubeAuth() });
+
+  console.log(
+    process.env.CRON_SECRET
+      ? 'Site refresh after upload: enabled (CRON_SECRET is set)'
+      : 'Site refresh after upload: disabled (CRON_SECRET is not set)'
+  );
 
   console.log('Listing video files in Drive folder...');
   const { data } = await drive.files.list({
@@ -171,6 +216,12 @@ async function main() {
   }
 
   console.log(`Done. Uploaded ${uploadedCount}, skipped ${skippedCount} already-uploaded file(s).`);
+
+  // The uploads are already recorded, so a failed site sync only delays the
+  // video until the next Vercel cron; still fail the job so it gets noticed.
+  if (uploadedCount > 0 && !(await triggerSiteVideoSync())) {
+    process.exitCode = 1;
+  }
 }
 
 main().catch((error) => {
